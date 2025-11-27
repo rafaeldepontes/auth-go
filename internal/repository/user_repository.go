@@ -32,8 +32,7 @@ func (repo *UserRepository) FindAllUsers() ([]User, error) {
 	}
 	defer rows.Close()
 
-	usersMemAddress := new([]User)
-	users := *usersMemAddress
+	var users []User
 
 	for rows.Next() {
 		var u User
@@ -49,3 +48,4 @@ func (repo *UserRepository) FindAllUsers() ([]User, error) {
 
 	return users, nil
 }
+
