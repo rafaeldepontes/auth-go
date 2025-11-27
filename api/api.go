@@ -1,12 +1,17 @@
 package api
 
 import (
+	"database/sql"
 	"os"
 
 	"github.com/joho/godotenv"
+	"github.com/rafaeldepontes/auth-go/internal/database"
+	"github.com/rafaeldepontes/auth-go/internal/repository"
+	"github.com/rafaeldepontes/auth-go/internal/service"
 )
 
-func Init() *Configuration {
+// Init initialize all the resources needed for the server run properly
+func Init() (*Configuration, *Application, *sql.DB, error) {
 	godotenv.Load(".env", ".env.example")
 
 	config := &Configuration{
@@ -15,5 +20,14 @@ func Init() *Configuration {
 		JwtRefreshBasedPort: os.Getenv("JWT_REFRESH_PORT"),
 	}
 
-	return config
+	db, err := database.Open()
+
+	var userRepository *repository.UserRepository = repository.NewUserRepository(db)
+	var userService *service.UserService = service.NewUserService(userRepository)
+
+	application := &Application{
+		UserService: userService,
+	}
+
+	return config, application, db, err
 }
