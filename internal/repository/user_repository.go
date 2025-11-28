@@ -23,14 +23,20 @@ func NewUserRepository(conn *sql.DB) *UserRepository {
 	}
 }
 
-func (repo *UserRepository) FindAllUsers(size, page int) ([]User, error) {
-	query := `SELECT id, username, age FROM users LIMIT $1 OFFSET $2;`
+func (repo *UserRepository) FindAllUsers(size, page int) ([]User, int, error) {
+	queryCount := `SELECT COUNT(id) FROM users;`
+	
+	var total int
+	if err := repo.db.QueryRow(queryCount).Scan(&total); err != nil {
+		return nil, 0, err
+	}
 
-	offset := page * size
+	query := `SELECT id, username, age FROM users LIMIT $1 OFFSET $2;`
+	offset := (page - 1) * size
 
 	rows, err := repo.db.Query(query, size, offset)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 
@@ -39,15 +45,15 @@ func (repo *UserRepository) FindAllUsers(size, page int) ([]User, error) {
 	for rows.Next() {
 		var u User
 		if err := rows.Scan(&u.Id, &u.Username, &u.Age); err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		users = append(users, u)
 	}
 
 	if err = rows.Err(); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
-	return users, nil
+	return users, total, nil
 }
 
