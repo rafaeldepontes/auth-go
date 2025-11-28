@@ -1,4 +1,4 @@
-package domain
+package api
 
 import (
 	"github.com/rafaeldepontes/auth-go/internal/service"

@@ -7,7 +7,6 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/rafaeldepontes/auth-go/configs"
 	"github.com/rafaeldepontes/auth-go/internal/database"
-	"github.com/rafaeldepontes/auth-go/internal/domain"
 	"github.com/rafaeldepontes/auth-go/internal/repository"
 	"github.com/rafaeldepontes/auth-go/internal/service"
 	log "github.com/sirupsen/logrus"
@@ -30,7 +29,7 @@ func initLogger() *log.Logger {
 }
 
 // Init initialize all the resources needed for the server run properly
-func Init() (*configs.Configuration, *domain.Application, *sql.DB, error) {
+func Init() (*configs.Configuration, *Application, *sql.DB, error) {
 	var logger *log.Logger = initLogger()
 	godotenv.Load(".env", ".env.example")
 
@@ -45,7 +44,7 @@ func Init() (*configs.Configuration, *domain.Application, *sql.DB, error) {
 	var userRepository *repository.UserRepository = repository.NewUserRepository(db)
 	var userService *service.UserService = service.NewUserService(userRepository, logger)
 
-	application := &domain.Application{
+	application := &Application{
 		UserService: userService,
 		Logger:      logger,
 	}

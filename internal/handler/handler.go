@@ -3,11 +3,11 @@ package handler
 import (
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
-	"github.com/rafaeldepontes/auth-go/internal/domain"
+	"github.com/rafaeldepontes/auth-go/api"
 )
 
 // Handler controls the system routes based on *chi.Mux and a configuration struct.
-func Handler(r *chi.Mux, app *domain.Application) {
+func Handler(r *chi.Mux, app *api.Application) {
 	r.Use(chimiddleware.StripSlashes)
 
 	// Public
