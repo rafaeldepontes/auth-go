@@ -13,6 +13,7 @@ func Handler(r *chi.Mux, app *domain.Application) {
 	// Public
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Get("/users", app.UserService.FindAllUsers)
+		// r.Get("/users/{id}", app.UserService.FindAllUsers)
 	})
 
 	// Protected

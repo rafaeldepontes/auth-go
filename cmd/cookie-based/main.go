@@ -16,14 +16,14 @@ func main() {
 
 	config, app, db, err := api.Init()
 	if err != nil {
-		app.Logger.Fatalf("[ERROR] An error occurred: %v", err)
+		app.Logger.Fatalf("An error occurred: %v", err)
 	}
 	defer db.Close()
 
 	var r *chi.Mux = chi.NewRouter()
 	handler.Handler(r, app)
 
-	app.Logger.Infof("[LOG] API running at %v", config.CookieBasedPort)
+	app.Logger.Infof("API running at %v", config.CookieBasedPort)
 
 	http.ListenAndServe(config.CookieBasedPort, r)
 }
