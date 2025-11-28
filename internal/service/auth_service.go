@@ -1,12 +1,16 @@
 package service
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/rafaeldepontes/auth-go/internal/errorhandler"
 	"github.com/rafaeldepontes/auth-go/internal/repository"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/crypto/bcrypt"
 )
+
+const Cost = 16
 
 type AuthService struct {
 	userRepository *repository.UserRepository
@@ -22,21 +26,71 @@ func NewAuthService(userRepo *repository.UserRepository, logg *log.Logger) *Auth
 	}
 }
 
-func (as AuthService) Register(w http.ResponseWriter, r *http.Request) {
-	username := r.FormValue("username")
-	if username == "" {
-		as.Logger.Errorf("An error occurred: %v", errorhandler.ErrorUsernameIsRequired)
-		errorhandler.BadRequestErrorHandler(w, errorhandler.ErrorUsernameIsRequired, r.URL.Path)
+func (as *AuthService) Register(w http.ResponseWriter, r *http.Request) {
+	as.Logger.Infoln("Registering a new user")
+
+	if r.Method != http.MethodPost {
+		as.Logger.Errorf("An error occurred: %v", errorhandler.ErrorInvalidMethod)
+		errorhandler.BadRequestErrorHandler(w, errorhandler.ErrorInvalidMethod, r.URL.Path)
 		return
 	}
 
-	// var user = repository.User{
-	// 	Username: ,
-	// }
+	var user repository.User
+	err := json.NewDecoder(r.Body).Decode(&user)
+	if err != nil {
+		as.Logger.Errorf("An error occurred: %v", err)
+		errorhandler.InternalErrorHandler(w)
+		return
+	}
 
-	// as.userRepository.RegisterUser(&user)
+	if ok, err := isValidUser(&user, as); !ok {
+		as.Logger.Errorf("An error occurred: %v", err)
+		errorhandler.BadRequestErrorHandler(w, err, r.URL.Path)
+		return
+	}
+
+	password := user.HashedPassword
+
+	var hashedPassword []byte
+	hashedPassword, err = bcrypt.GenerateFromPassword([]byte(*password), Cost)
+	if err != nil {
+		as.Logger.Errorf("An error occurred: %v", err)
+		errorhandler.InternalErrorHandler(w)
+		return
+	}
+
+	*password = string(hashedPassword)
+
+	err = as.userRepository.RegisterUser(&user)
+	if err != nil {
+		as.Logger.Errorf("An error occurred: %v", err)
+		errorhandler.InternalErrorHandler(w)
+		return
+	}
 }
 
 func (as AuthService) Login(w http.ResponseWriter, r *http.Request) {
 
+}
+
+func isValidUser(newUser *repository.User, as *AuthService) (bool, error) {
+	if username := newUser.Username; *username == "" {
+		return false, errorhandler.ErrorUsernameIsRequired
+	}
+
+	if password := newUser.HashedPassword; *password == "" {
+		return false, errorhandler.ErrorPasswordIsRequired
+	}
+
+	if age := newUser.Age; *age == 0 {
+		return false, errorhandler.ErrorAgeIsRequired
+	}
+
+	emptyUser := repository.User{}
+	user, _ := as.userRepository.FindUserByUsername(*newUser.Username)
+	if user != emptyUser {
+		return false, errorhandler.ErrorUserAlreadyExists
+	}
+
+	return true, nil
 }
