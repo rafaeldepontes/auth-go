@@ -2,11 +2,15 @@ package errorhandler
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 )
+
+var ErrorUsernameNotFound = errors.New("User not found")
+var ErrorIdIsRequired = errors.New("Identifier is required")
 
 const BrazilianDateTimeFormat = "02/01/2006 15:04:05"
 
