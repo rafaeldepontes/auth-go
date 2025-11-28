@@ -45,7 +45,7 @@ func (us *UserService) FindAllUsers(w http.ResponseWriter, r *http.Request) {
 	users, totalRecords, err := us.userRepository.FindAllUsers(size, currentPage)
 	if err != nil {
 		errorhandler.BadRequestErrorHandler(w, err, r.URL.Path)
-		log.Errorf("An error occurred: %v", err)
+		us.Logger.Errorf("An error occurred: %v", err)
 	}
 
 	pageModel := pagination.NewPagination(users, uint(currentPage), uint(totalRecords), uint(size))
@@ -56,4 +56,29 @@ func (us *UserService) FindAllUsers(w http.ResponseWriter, r *http.Request) {
 	us.Logger.Infof("Found %v users from a total of %v", len(users), totalRecords)
 
 	json.NewEncoder(w).Encode(pageModel)
+}
+
+func (us UserService) FindUserById(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	us.Logger.Infof("Listing user by id - %v", idStr)
+
+	if idStr == "" {
+		errorhandler.BadRequestErrorHandler(w, errorhandler.ErrorIdIsRequired, r.URL.Path)
+		us.Logger.Errorf("An error occurred: %v", errorhandler.ErrorIdIsRequired)
+	}
+
+	pathId, _ := strconv.Atoi(idStr)
+	id := uint(pathId)
+
+	var user repository.User
+	user, err := us.userRepository.FindUserById(id)
+	if err != nil {
+		errorhandler.BadRequestErrorHandler(w, errorhandler.ErrorUsernameNotFound, r.URL.Path)
+		us.Logger.Errorf("An error occurred: %v", err)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	json.NewEncoder(w).Encode(user)
 }
