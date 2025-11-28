@@ -3,15 +3,20 @@ package service
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/rafaeldepontes/auth-go/internal/domain"
 	"github.com/rafaeldepontes/auth-go/internal/errorhandler"
 	"github.com/rafaeldepontes/auth-go/internal/repository"
+	"github.com/rafaeldepontes/auth-go/internal/token"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 )
 
-const Cost = 16
+const (
+	Cost         = 16
+	Token_Length = 32
+)
 
 type AuthService struct {
 	userRepository *repository.UserRepository
@@ -69,6 +74,9 @@ func (as *AuthService) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+
 	as.Logger.Infoln("The user registered successfully.")
 }
 
@@ -104,6 +112,34 @@ func (as AuthService) Login(w http.ResponseWriter, r *http.Request) {
 		errorhandler.BadRequestErrorHandler(w, errorhandler.ErrorInvalidUsernameOrPassword, r.URL.Path)
 		return
 	}
+
+	token := token.CookieBased{}
+
+	sessionToken := token.GenerateToken(Token_Length)
+	csrfToken := token.GenerateToken(Token_Length)
+
+	err = as.userRepository.SetUserToken(sessionToken, csrfToken, *userInTheDatabase.Id)
+	if err != nil {
+		as.Logger.Errorf("An error occurred: %v", err)
+		errorhandler.InternalErrorHandler(w)
+		return
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_token",
+		Value:    sessionToken,
+		Expires:  time.Now().Add(30 * time.Minute),
+		HttpOnly: true,
+	})
+
+	http.SetCookie(w, &http.Cookie{
+		Name:    "crsf_token",
+		Value:   csrfToken,
+		Expires: time.Now().Add(30 * time.Minute),
+	})
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 
 	as.Logger.Infoln("The user logged in successfully.")
 }
