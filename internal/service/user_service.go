@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/rafaeldepontes/auth-go/internal/errorhandler"
+	"github.com/rafaeldepontes/auth-go/internal/pagination"
 	"github.com/rafaeldepontes/auth-go/internal/repository"
 	log "github.com/sirupsen/logrus"
 )
@@ -39,20 +40,20 @@ func (us *UserService) FindAllUsers(w http.ResponseWriter, r *http.Request) {
 		currentPageStr = "1"
 	}
 	currentPage, _ := strconv.Atoi(currentPageStr)
-	currentPage-- // If page is the first one, in the URL should be "1" and in the code should be 0 for the offset...
 
 	var users []repository.User
-	users, err := us.userRepository.FindAllUsers(size, currentPage)
+	users, totalRecords, err := us.userRepository.FindAllUsers(size, currentPage)
 	if err != nil {
 		errorhandler.BadRequestErrorHandler(w, err, r.URL.Path)
 		log.Errorf("An error occurred: %v", err)
 	}
 
+	pageModel := pagination.NewPagination(users, uint(currentPage), uint(totalRecords), uint(size))
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
-	us.Logger.Infof("Found %v users", len(users))
+	us.Logger.Infof("Found %v users from a total of %v", len(users), totalRecords)
 
-	//TODO: IMPLEMENT PAGINATION FOR THIS ENDPOINT
-	json.NewEncoder(w).Encode(users)
+	json.NewEncoder(w).Encode(pageModel)
 }
