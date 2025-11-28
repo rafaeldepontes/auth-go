@@ -12,10 +12,8 @@ func Handler(r *chi.Mux, app *api.Application, typeOf int) {
 	r.Use(chimiddleware.StripSlashes)
 
 	// Public
-	r.Route("/api/v1", func(r chi.Router) {
-		r.Get("/login", app.AuthService.Login)
-		r.Get("/register", app.AuthService.Register)
-	})
+	r.Post("/login", app.AuthService.Login)
+	r.Post("/register", app.AuthService.Register)
 
 	switch typeOf {
 	case api.CookieBased:
