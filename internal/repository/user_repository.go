@@ -23,6 +23,10 @@ func NewUserRepository(conn *sql.DB) *UserRepository {
 	}
 }
 
+// FindAllUsers search for all the users without a filter
+// using a pagination method based on offset and limit
+// returns a slice of User, the total of records in the database
+// and an Error if any
 func (repo *UserRepository) FindAllUsers(size, page int) ([]User, int, error) {
 	queryCount := `SELECT COUNT(id) FROM users;`
 
@@ -57,6 +61,8 @@ func (repo *UserRepository) FindAllUsers(size, page int) ([]User, int, error) {
 	return users, total, nil
 }
 
+// FindUserById search for an user by his id
+// returns the user and an error if any
 func (repo *UserRepository) FindUserById(id uint) (User, error) {
 	var user User
 	query := `SELECT id, username, age FROM users WHERE id = $1`
