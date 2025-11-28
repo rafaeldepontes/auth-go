@@ -23,10 +23,12 @@ func NewUserRepository(conn *sql.DB) *UserRepository {
 	}
 }
 
-func (repo *UserRepository) FindAllUsers() ([]User, error) {
-	query := `SELECT id, username, age FROM users;`
+func (repo *UserRepository) FindAllUsers(size, page int) ([]User, error) {
+	query := `SELECT id, username, age FROM users LIMIT $1 OFFSET $2;`
 
-	rows, err := repo.db.Query(query)
+	offset := page * size
+
+	rows, err := repo.db.Query(query, size, offset)
 	if err != nil {
 		return nil, err
 	}
