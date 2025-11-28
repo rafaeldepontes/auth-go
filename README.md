@@ -60,8 +60,6 @@ Create a `.env` file (example provided in the project). The service expects at l
    cd go-full-crud
    ```
 
-````
-
 2. Create a `.env` file (or use the provided `.env.example`) and set `DATABASE_URL`, `JWT_PORT`, `COOKIE_PORT` and `JWT_REFRESH_PORT` as needed.
 
 3. Start PostgreSQL with Docker:
@@ -70,9 +68,9 @@ Create a `.env` file (example provided in the project). The service expects at l
    docker run --name go-postgres -e POSTGRES_PASSWORD=example -e POSTGRES_USER=root -e POSTGRES_DB=golang-database -p 5432:5432 -d postgres:15
    ```
 
-Adjust user/password/db name to match your `DATABASE_URL` if necessary.
+   Adjust user/password/db name to match your `DATABASE_URL` if necessary.
 
-4. Apply the database schema (run the SQL above) using `psql` or a GUI tool. (`WIP`)
+4. Apply the database schema (run the SQL above) using `psql` or a GUI tool.
 
 5. Run the service:
 
@@ -82,4 +80,3 @@ Adjust user/password/db name to match your `DATABASE_URL` if necessary.
    go run cmd/jwt-based/main.go            # This one for the JWT but without the refresh token, only the expiration time
    go run cmd/jwt-refresh-based/main.go    # This one for the JWT with refresh token.
    ```
-````
