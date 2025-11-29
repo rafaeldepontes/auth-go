@@ -110,10 +110,13 @@ func (us UserService) FindUserByUsername(w http.ResponseWriter, r *http.Request)
 	json.NewEncoder(w).Encode(user)
 }
 
+// UpdateUserDetails changes the user age and/or name if it's the account owner.
 func (us UserService) UpdateUserDetails(w http.ResponseWriter, r *http.Request) {
 
 }
 
+// DeleteAccount deletes the user from the database by his username
+// if it's the account owner.
 func (us UserService) DeleteAccount(w http.ResponseWriter, r *http.Request) {
 
 }

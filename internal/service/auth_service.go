@@ -87,8 +87,8 @@ func (as *AuthService) Register(w http.ResponseWriter, r *http.Request) {
 	as.Logger.Infoln("The user registered successfully.")
 }
 
-func (as AuthService) LoginCookieBased(w http.ResponseWriter, r *http.Request) {
-	var user *repository.User = loginFlow(&as, w, r)
+func (as *AuthService) LoginCookieBased(w http.ResponseWriter, r *http.Request) {
+	var user *repository.User = loginFlow(as, w, r)
 	token := token.CookieBased{}
 
 	sessionToken := token.GenerateToken(Token_Length)
@@ -109,7 +109,7 @@ func (as AuthService) LoginCookieBased(w http.ResponseWriter, r *http.Request) {
 	})
 
 	http.SetCookie(w, &http.Cookie{
-		Name:    "crsf_token",
+		Name:    "csrf_token",
 		Value:   csrfToken,
 		Expires: time.Now().Add(30 * time.Minute),
 	})
@@ -120,8 +120,8 @@ func (as AuthService) LoginCookieBased(w http.ResponseWriter, r *http.Request) {
 	as.Logger.Infoln("The user logged in successfully.")
 }
 
-func (as AuthService) LoginJwtBased(w http.ResponseWriter, r *http.Request) {
-	var user *repository.User = loginFlow(&as, w, r)
+func (as *AuthService) LoginJwtBased(w http.ResponseWriter, r *http.Request) {
+	var user *repository.User = loginFlow(as, w, r)
 	var maker *token.JwtBuilder = as.jwtMaker
 
 	durationInt, _ := strconv.Atoi(os.Getenv("TOKEN_DURATION"))
@@ -142,7 +142,7 @@ func (as AuthService) LoginJwtBased(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(userResponse)
 }
 
-func (as AuthService) LoginJwtRefreshBased(w http.ResponseWriter, r *http.Request) {
+func (as *AuthService) LoginJwtRefreshBased(w http.ResponseWriter, r *http.Request) {
 
 }
 
