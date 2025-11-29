@@ -22,8 +22,8 @@ func (builder JwtBuilder) GenerateToken(id uint, email string, duration time.Dur
 		return "", nil, err
 	}
 
-	var tokenJwt *jwt.Token = jwt.NewWithClaims(jwt.SigningMethodES256, userClaims)
-	token, err := tokenJwt.SignedString(builder.secretKey)
+	var tokenJwt *jwt.Token = jwt.NewWithClaims(jwt.SigningMethodHS256, userClaims)
+	token, err := tokenJwt.SignedString([]byte(builder.secretKey))
 	if err != nil {
 		return "", nil, err
 	}
@@ -35,7 +35,7 @@ func (builder JwtBuilder) VerifyToken(token string) (*UserClaims, error) {
 	var userClaims *UserClaims
 	var tokenJwt *jwt.Token
 	tokenJwt, err := jwt.ParseWithClaims(token, userClaims, func(t *jwt.Token) (any, error) {
-		_, ok := t.Method.(*jwt.SigningMethodECDSA)
+		_, ok := t.Method.(*jwt.SigningMethodHMAC)
 		if !ok {
 			return nil, errorhandler.ErrorInvalidTokenSigningMethod
 		}
