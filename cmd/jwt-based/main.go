@@ -24,5 +24,5 @@ func main() {
 
 	app.Logger.Infof("API running at %v\n", config.JwtBasedPort)
 
-	http.ListenAndServe(config.JwtBasedPort, nil)
+	http.ListenAndServe(config.JwtBasedPort, r)
 }

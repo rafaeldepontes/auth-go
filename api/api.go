@@ -41,6 +41,7 @@ func Init() (*configs.Configuration, *Application, *sql.DB, error) {
 	godotenv.Load(".env", ".env.example")
 
 	config := &configs.Configuration{
+		SecretKey:           os.Getenv("JWT_SECRET_KEY"),
 		JwtBasedPort:        os.Getenv("JWT_PORT"),
 		CookieBasedPort:     os.Getenv("COOKIE_PORT"),
 		JwtRefreshBasedPort: os.Getenv("JWT_REFRESH_PORT"),
@@ -50,7 +51,7 @@ func Init() (*configs.Configuration, *Application, *sql.DB, error) {
 
 	var userRepository *repository.UserRepository = repository.NewUserRepository(db)
 	var userService *service.UserService = service.NewUserService(userRepository, logger)
-	var authService *service.AuthService = service.NewAuthService(userRepository, logger)
+	var authService *service.AuthService = service.NewAuthService(userRepository, logger, config.SecretKey)
 
 	application := &Application{
 		UserService: userService,
