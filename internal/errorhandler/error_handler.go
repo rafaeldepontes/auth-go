@@ -32,11 +32,14 @@ var (
 	BadRequestErrorHandler = func(w http.ResponseWriter, err error, path string) {
 		writeError(w, err.Error(), http.StatusBadRequest, path)
 	}
-	RequestErrorHandler = func(w http.ResponseWriter, err error, status int, path string) {
-		writeError(w, err.Error(), status, path)
-	}
 	InternalErrorHandler = func(w http.ResponseWriter) {
 		writeError(w, "An unexpected Error Occurred.", http.StatusInternalServerError, "")
+	}
+	UnauthroizedErrorHandler = func(w http.ResponseWriter) {
+		writeError(w, "Unauthroized", http.StatusUnauthorized, "")
+	}
+	RequestErrorHandler = func(w http.ResponseWriter, err error, status int, path string) {
+		writeError(w, err.Error(), status, path)
 	}
 )
 
