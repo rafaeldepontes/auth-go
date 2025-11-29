@@ -12,7 +12,16 @@ func Handler(r *chi.Mux, app *api.Application, typeOf int) {
 	r.Use(chimiddleware.StripSlashes)
 
 	// Public
-	r.Post("/login", app.AuthService.Login)
+	switch typeOf {
+	case api.CookieBased:
+		r.Post("/login", app.AuthService.LoginCookieBased)
+	case api.JwtBased:
+		r.Post("/login", app.AuthService.LoginJwtBased)
+	case api.JwtRefreshBased:
+		r.Post("/login", app.AuthService.LoginJwtRefreshBased)
+	default:
+		app.Logger.Fatalln("No authentication method was chosen.")
+	}
 	r.Post("/register", app.AuthService.Register)
 
 	// Protected
@@ -20,7 +29,7 @@ func Handler(r *chi.Mux, app *api.Application, typeOf int) {
 		r.Route("/api/v1", func(r chi.Router) {
 			switch typeOf {
 			case api.CookieBased:
-				r.Use(middleware.AuthCookieBased) // TODO: FINISH THE IMPLEMENTATION...
+				r.Use(middleware.AuthCookieBased)
 			case api.JwtBased:
 				r.Use(middleware.JwtBased) // TODO: FINISH THE IMPLEMENTATION...
 			case api.JwtRefreshBased:
