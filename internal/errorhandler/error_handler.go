@@ -9,19 +9,26 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var ErrorUserNotFound = errors.New("User not found")
-var ErrorInvalidMethod = errors.New("Invalid method")
-var ErrorUserAlreadyExists = errors.New("User already exist")
-var ErrorInvalidUsernameOrPassword = errors.New("Invalid username or password")
-var ErrorInvalidTokenSigningMethod = errors.New("Invalid token signing method")
-var ErrorParsingToken = errors.New("Error parsing token")
-var ErrorInvalidTokenClaim = errors.New("Invalid token claims")
-var ErrorCreatingToken = errors.New("Error while creating token")
-
-var ErrorIdIsRequired = errors.New("Identifier is required")
-var ErrorUsernameIsRequired = errors.New("Username is required")
-var ErrorPasswordIsRequired = errors.New("Password is required")
-var ErrorAgeIsRequired = errors.New("Age is required")
+var (
+	ErrInvalidUsernameOrPassword = errors.New("Invalid username or password")
+	ErrInvalidTokenSigningMethod = errors.New("Invalid token signing method")
+	ErrInvalidTokenSignature     = errors.New("Token signature is invalid")
+	ErrInvalidExpiredToken       = errors.New("Invalid token, token already expired")
+	ErrUsernameIsRequired        = errors.New("Username is required")
+	ErrPasswordIsRequired        = errors.New("Password is required")
+	ErrInvalidTokenClaim         = errors.New("Invalid token claims")
+	ErrUserAlreadyExists         = errors.New("User already exist")
+	ErrTokenNotValidYet          = errors.New("Token is not valid yet")
+	ErrInvalidCSRFToken          = errors.New("CSRF token missing")
+	ErrMalformedToken            = errors.New("Token is malformed")
+	ErrAgeIsRequired             = errors.New("Age is required")
+	ErrInvalidMethod             = errors.New("Invalid method")
+	ErrCreatingToken             = errors.New("Error while creating token")
+	ErrIdIsRequired              = errors.New("Identifier is required")
+	ErrUserNotFound              = errors.New("User not found")
+	ErrParsingToken              = errors.New("Error parsing token")
+	ErrInvalidToken              = errors.New("Token missing or invalid")
+)
 
 const BrazilianDateTimeFormat = "02/01/2006 15:04:05"
 
@@ -39,8 +46,8 @@ var (
 	InternalErrorHandler = func(w http.ResponseWriter) {
 		writeError(w, "An unexpected Error Occurred.", http.StatusInternalServerError, "")
 	}
-	UnauthroizedErrorHandler = func(w http.ResponseWriter) {
-		writeError(w, "Unauthroized", http.StatusUnauthorized, "")
+	UnauthroizedErrorHandler = func(w http.ResponseWriter, err error) {
+		writeError(w, err.Error(), http.StatusUnauthorized, "")
 	}
 	RequestErrorHandler = func(w http.ResponseWriter, err error, status int, path string) {
 		writeError(w, err.Error(), status, path)
