@@ -15,38 +15,24 @@ func Handler(r *chi.Mux, app *api.Application, typeOf int) {
 	r.Post("/login", app.AuthService.Login)
 	r.Post("/register", app.AuthService.Register)
 
-	switch typeOf {
-	case api.CookieBased:
-		r.Group(func(r chi.Router) {
-			r.Route("/api/v1", func(r chi.Router) {
+	// Protected
+	r.Group(func(r chi.Router) {
+		r.Route("/api/v1", func(r chi.Router) {
+			switch typeOf {
+			case api.CookieBased:
 				r.Use(middleware.AuthCookieBased) // TODO: FINISH THE IMPLEMENTATION...
-				r.Get("/users", app.UserService.FindAllUsers)
-				r.Get("/users/{id}", app.UserService.FindUserById)
-				r.Patch("/users", app.UserService.UpdateUserDetails)
-				r.Delete("/users", app.UserService.DeleteAccount)
-			})
-		})
-	case api.JwtBased:
-		r.Group(func(r chi.Router) {
-			r.Route("/api/v1", func(r chi.Router) {
+			case api.JwtBased:
 				r.Use(middleware.JwtBased) // TODO: FINISH THE IMPLEMENTATION...
-				r.Get("/users", app.UserService.FindAllUsers)
-				r.Get("/users/{id}", app.UserService.FindUserById)
-				r.Patch("/users", app.UserService.UpdateUserDetails)
-				r.Delete("/users", app.UserService.DeleteAccount)
-			})
-		})
-	case api.JwtRefreshBased:
-		r.Group(func(r chi.Router) {
-			r.Route("/api/v1", func(r chi.Router) {
+			case api.JwtRefreshBased:
 				r.Use(middleware.JwtRefreshBased) // TODO: FINISH THE IMPLEMENTATION...
-				r.Get("/users", app.UserService.FindAllUsers)
-				r.Get("/users/{id}", app.UserService.FindUserById)
-				r.Patch("/users", app.UserService.UpdateUserDetails)
-				r.Delete("/users", app.UserService.DeleteAccount)
-			})
+			default:
+				app.Logger.Fatalln("No authentication method was chosen.")
+			}
+
+			r.Get("/users", app.UserService.FindAllUsers)
+			r.Get("/users/{id}", app.UserService.FindUserById)
+			r.Patch("/users", app.UserService.UpdateUserDetails)
+			r.Delete("/users", app.UserService.DeleteAccount)
 		})
-	default:
-		app.Logger.Fatalln("No authentication method was chosen.")
-	}
+	})
 }
