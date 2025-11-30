@@ -81,6 +81,8 @@ func (m *Middleware) JwtBased(next http.Handler) http.Handler {
 func (m *Middleware) JwtRefreshBased(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
+		//WIP (got tired today... 11-30-2025)
+
 		next.ServeHTTP(w, r)
 	})
 }
