@@ -7,9 +7,10 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/rafaeldepontes/auth-go/internal/database/repository"
 	"github.com/rafaeldepontes/auth-go/internal/domain"
 	"github.com/rafaeldepontes/auth-go/internal/errorhandler"
-	"github.com/rafaeldepontes/auth-go/internal/repository"
+	"github.com/rafaeldepontes/auth-go/internal/storage"
 	"github.com/rafaeldepontes/auth-go/internal/token"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
@@ -24,15 +25,18 @@ type AuthService struct {
 	jwtMaker       *token.JwtBuilder
 	userRepository *repository.UserRepository
 	Logger         *log.Logger
+	Caches         *storage.Caches
+	Cache          *storage.Caches
 }
 
 // NewAuthService initialize a new AuthService containing a UserRepository for
 // login and register operations ONLY.
-func NewAuthService(userRepo *repository.UserRepository, logg *log.Logger, secretKey string) *AuthService {
+func NewAuthService(userRepo *repository.UserRepository, logg *log.Logger, secretKey string, cache *storage.Caches) *AuthService {
 	return &AuthService{
 		userRepository: userRepo,
 		Logger:         logg,
 		jwtMaker:       token.NewJwtBuilder(secretKey),
+		Cache:          cache,
 	}
 }
 
@@ -89,6 +93,10 @@ func (as *AuthService) Register(w http.ResponseWriter, r *http.Request) {
 
 func (as *AuthService) LoginCookieBased(w http.ResponseWriter, r *http.Request) {
 	var user *repository.User = loginFlow(as, w, r)
+	if user == nil {
+		return
+	}
+
 	token := token.CookieBased{}
 
 	sessionToken := token.GenerateToken(Token_Length)
@@ -114,6 +122,12 @@ func (as *AuthService) LoginCookieBased(w http.ResponseWriter, r *http.Request) 
 		Expires: time.Now().Add(30 * time.Minute),
 	})
 
+	durationInt, _ := strconv.Atoi(os.Getenv("TOKEN_DURATION"))
+	var duration time.Duration = time.Duration(durationInt)
+
+	userCache := as.Cache.UserCache
+	userCache.Set(sessionToken, *user.Username, time.Now().Add(duration*time.Minute))
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
@@ -122,6 +136,10 @@ func (as *AuthService) LoginCookieBased(w http.ResponseWriter, r *http.Request) 
 
 func (as *AuthService) LoginJwtBased(w http.ResponseWriter, r *http.Request) {
 	var user *repository.User = loginFlow(as, w, r)
+	if user == nil {
+		return
+	}
+
 	var maker *token.JwtBuilder = as.jwtMaker
 
 	durationInt, _ := strconv.Atoi(os.Getenv("TOKEN_DURATION"))
@@ -132,6 +150,10 @@ func (as *AuthService) LoginJwtBased(w http.ResponseWriter, r *http.Request) {
 		errorhandler.InternalErrorHandler(w)
 		return
 	}
+
+	tokenCache := as.Cache.TokenCache
+	invalid := false
+	tokenCache.Set(token, invalid, time.Now().Add(duration*time.Minute))
 
 	userResponse := domain.TokenResponse{
 		Token: token,
@@ -159,9 +181,9 @@ func isValidUser(newUser *repository.User, as *AuthService) (bool, error) {
 		return false, errorhandler.ErrAgeIsRequired
 	}
 
-	emptyUser := repository.User{}
-	user, _ := as.userRepository.FindUserByUsername(*newUser.Username)
-	if *user != emptyUser {
+	user, err := as.userRepository.FindUserByUsername(*newUser.Username)
+	if user != nil {
+		as.Logger.Errorf("An error occurred: %v\n", err)
 		return false, errorhandler.ErrUserAlreadyExists
 	}
 
