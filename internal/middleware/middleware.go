@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -60,17 +61,20 @@ func (m *Middleware) JwtBased(next http.Handler) http.Handler {
 		token := cleanToken(dirtToken)
 
 		if dirtToken == "" || !strings.HasPrefix(dirtToken, Token_Prefix) {
+			fmt.Println(dirtToken == "" || !strings.HasPrefix(dirtToken, Token_Prefix))
 			errorhandler.UnauthroizedErrorHandler(w, errorhandler.ErrInvalidToken)
 			return
 		}
 
 		userClaims, err := m.JwtBuilder.VerifyToken(token)
 		if err != nil {
+			fmt.Println(err)
 			errorhandler.UnauthroizedErrorHandler(w, err)
 			return
 		}
 
-		if !validCredentials(w, r, m, &token, userClaims) {
+		isRefresh := false
+		if !validCredentials(w, r, m, &token, userClaims, isRefresh) {
 			return
 		}
 
@@ -80,8 +84,26 @@ func (m *Middleware) JwtBased(next http.Handler) http.Handler {
 
 func (m *Middleware) JwtRefreshBased(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		dirtToken := r.Header.Get("Authorization")
+		token := cleanToken(dirtToken)
 
-		//WIP (got tired today... 11-30-2025)
+		if dirtToken == "" || !strings.HasPrefix(dirtToken, Token_Prefix) {
+			fmt.Println(dirtToken == "" || !strings.HasPrefix(dirtToken, Token_Prefix))
+			errorhandler.UnauthroizedErrorHandler(w, errorhandler.ErrInvalidToken)
+			return
+		}
+
+		userClaims, err := m.JwtBuilder.VerifyToken(token)
+		if err != nil {
+			fmt.Println(err)
+			errorhandler.UnauthroizedErrorHandler(w, err)
+			return
+		}
+
+		isRefresh := true
+		if !validCredentials(w, r, m, &token, userClaims, isRefresh) {
+			return
+		}
 
 		next.ServeHTTP(w, r)
 	})
@@ -91,18 +113,20 @@ func cleanToken(dirtToken string) string {
 	return strings.TrimPrefix(dirtToken, Token_Prefix)
 }
 
-func validCredentials(w http.ResponseWriter, r *http.Request, m *Middleware, token *string, userClaims *jwt.UserClaims) bool {
+func validCredentials(w http.ResponseWriter, r *http.Request, m *Middleware, token *string, userClaims *jwt.UserClaims, isRefresh bool) bool {
 	path := r.URL.Path
 
 	if !strings.Contains(path, "users") {
 		return true
 	}
 
-	tokenCache := m.Cache.TokenCache
-
-	if val, ok := tokenCache.Get(*token); !ok || val {
-		errorhandler.UnauthroizedErrorHandler(w, errorhandler.ErrInvalidToken)
-		return false
+	if !isRefresh {
+		tokenCache := m.Cache.TokenCache
+		if val, ok := tokenCache.Get(*token); !ok || val {
+			fmt.Println("Missing cache")
+			errorhandler.UnauthroizedErrorHandler(w, errorhandler.ErrInvalidToken)
+			return false
+		}
 	}
 
 	if !checkMethods(r) {
@@ -116,6 +140,7 @@ func validCredentials(w http.ResponseWriter, r *http.Request, m *Middleware, tok
 
 	pathSlice := strings.Split(path, "/")
 	if len(pathSlice) <= 0 {
+		fmt.Println("Invalid path")
 		errorhandler.BadRequestErrorHandler(w, errorhandler.ErrIdIsRequired, r.URL.Path)
 		return false
 	}
