@@ -1,4 +1,4 @@
-name: CI - Go (lint, test, build)
+name: CI - Go (lint (DISABLED), test, build)
 
 on:
   push:
@@ -11,37 +11,10 @@ env:
   TARGETS: jwt-refresh-based,jwt-based,cookie-based
 
 jobs:
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: ${{ env.GO_VERSION }}
-
-      - name: Cache Go modules
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
-
-      - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v4
-        with:
-          version: v1.59.0
-          args: run ./...
-
   test:
     name: Test
     runs-on: ubuntu-latest
-    needs: lint
+    # needs: lint
     steps:
       - uses: actions/checkout@v4
 
@@ -81,7 +54,8 @@ jobs:
   build:
     name: Build binaries (matrix)
     runs-on: ubuntu-latest
-    needs: [lint, test]
+    # needs: [lint, test]
+    needs: [test]
     strategy:
       fail-fast: false
       matrix:
@@ -118,7 +92,7 @@ jobs:
           fi
 
           export GOOS
-          export GOARCH=amd64   # ajuste se quiser adicionar arm/arm64
+          export GOARCH=amd64
 
           mkdir -p bin/${OUT_DIR}/${{ matrix.target }}
 
@@ -140,8 +114,36 @@ jobs:
       - name: List produced files
         run: ls -R bin || true
 
-      - name: Upload artifact (per build)
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.os_label }}-${{ matrix.target }}
           path: bin/${{ matrix.os_label }}/${{ matrix.target }}/
+
+  # BEING DISABLED BECAUSE golang-ci DOESN'T YET SUPPORT VERSION 1.25
+  # lint:
+  #   name: Lint
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+
+  #     - name: Set up Go
+  #       uses: actions/setup-go@v4
+  #       with:
+  #         go-version: ${{ env.GO_VERSION }}
+
+  #     - name: Cache Go modules
+  #       uses: actions/cache@v4
+  #       with:
+  #         path: |
+  #           ~/.cache/go-build
+  #           ~/go/pkg/mod
+  #         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+  #         restore-keys: |
+  #           ${{ runner.os }}-go-
+
+  #     - name: Run golangci-lint
+  #       uses: golangci/golangci-lint-action@v4
+  #       with:
+  #         version: v1.59.0
+  #         args: run ./...
