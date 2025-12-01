@@ -1,28 +1,147 @@
-# This workflow will build a golang project
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
-
-# Adjusts for a later idea...
-name: Go
+name: CI - Go (lint, test, build)
 
 on:
   push:
-    branches: [ "main" ]
-  #pull_request:
-    #branches: [ "main" ]
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
 
-#jobs:
-  #build:
-    #runs-on: ubuntu-latest
-    #steps:
-    #- uses: actions/checkout@v4
+env:
+  GO_VERSION: "1.25"
+  TARGETS: jwt-refresh-based,jwt-based,cookie-based
 
-    #- name: Set up Go
-      #uses: actions/setup-go@v4
-      #with:
-        #go-version: '1.20'
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-    #- name: Build
-      #run: go build -v ./...
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
 
-    #- name: Test
-      #run: go test -v ./...
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v4
+        with:
+          version: v1.59.0
+          args: run ./...
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Verify modules
+        run: go mod download
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: Run tests (with coverage)
+        run: |
+          mkdir -p testresults
+          go test -v ./... -coverprofile=coverage.out
+          go tool cover -func=coverage.out | tee testresults/coverage.txt
+
+      - name: Upload test coverage artifact #Optional... I will look futher into this...
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: testresults/
+
+  build:
+    name: Build binaries (matrix)
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    strategy:
+      fail-fast: false
+      matrix:
+        os_label: [windows, linux, mac]
+        target: [jwt-refresh-based, jwt-based, cookie-based]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Build ${{ matrix.os_label }} / ${{ matrix.target }}
+        run: |
+          set -e
+          if [ "${{ matrix.os_label }}" = "mac" ]; then
+            GOOS=darwin
+            OUT_DIR="mac"
+          else
+            GOOS=${{ matrix.os_label }}
+            OUT_DIR=${{ matrix.os_label }}
+          fi
+
+          export GOOS
+          export GOARCH=amd64   # ajuste se quiser adicionar arm/arm64
+
+          mkdir -p bin/${OUT_DIR}/${{ matrix.target }}
+
+          SRC="./cmd/${{ matrix.target }}/main.go"
+          if [ ! -f "${SRC}" ]; then
+            echo "ERRO: arquivo não encontrado: ${SRC}"
+            exit 1
+          fi
+
+          if [ "${OUT_DIR}" = "windows" ]; then
+            BINARY_NAME="app.exe"
+          else
+            BINARY_NAME="app"
+          fi
+
+          echo "Building GOOS=${GOOS} GOARCH=${GOARCH} -> bin/${OUT_DIR}/${{ matrix.target }}/${BINARY_NAME}"
+          go build -v -o bin/${OUT_DIR}/${{ matrix.target }}/${BINARY_NAME} ${SRC}
+
+      - name: List produced files
+        run: ls -R bin || true
+
+      - name: Upload artifact (per build)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.os_label }}-${{ matrix.target }}
+          path: bin/${{ matrix.os_label }}/${{ matrix.target }}/
