@@ -15,7 +15,7 @@ type TokenRefreshResponse struct {
 }
 
 type RenewAccessTokenRequest struct {
-	RefreshToken string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
 }
 
 type RenewAccessTokenResponse struct {
