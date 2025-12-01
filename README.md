@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE TABLE IF NOT EXISTS sessions (
   id VARCHAR(255) PRIMARY KEY NOT NULL,
-  username VARCHAR(50) UNIQUE NOT NULL,
+  username VARCHAR(50) NOT NULL,
   is_revoked BOOL NOT null default false,
   refresh_token VARCHAR(512) NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
@@ -146,7 +146,7 @@ Your server can run in one of three modes:
 
 - JWT-based | `JWT_PORT=8001`
 
-- JWT + Refresh | `JWT_REFRESH_PORT=8002 (WIP)`
+- JWT + Refresh | `JWT_REFRESH_PORT=8002`
 
 ---
 
@@ -212,9 +212,60 @@ curl -H "Authorization: Bearer $TOKEN"   http://localhost:8001/api/v1/users
 
 ---
 
-## 2.3 JWT + Refresh Token (WIP)
+## 2.3 JWT + Refresh Token
 
-## `WIP`
+### Overview
+
+This authentication mode issues two tokens on login: a short-lived **access token** (JWT) used for API requests, and a longer-lived **refresh token** used to obtain new access tokens without re-authenticating. Refresh tokens are stored server-side (sessions table) so they can be revoked.
+
+### Endpoints
+
+- **POST /login** — returns `session_id`, `access_token`, `refresh_token`, and their expiration times.
+- **POST /renew** — accepts a refresh token and returns a new access token and its expiration.
+- **POST /revoke/{id}** — revoke a session by `id` (sets session as revoked). Returns `204 No Content` on success.
+
+### Login (example)
+
+Request:
+
+```bash
+curl -s -X POST http://localhost:8002/login   -H "Content-Type: application/json"   -d '{"username":"alice","password":"plainPassword123"}'
+```
+
+Successful response (201 Created):
+
+```json
+{
+  "session_id": "8a4f2d9e-1a3b-4c2a-9b8f-0a1b2c3d4e5f",
+  "access_token": "<JWT_ACCESS_TOKEN>",
+  "refresh_token": "<JWT_REFRESH_TOKEN>",
+  "access_token_expires_at": "2025-11-30T12:34:56Z",
+  "refresh_token_expires_at": "2025-12-01T12:34:56Z"
+}
+```
+
+### Renew access token
+
+Request:
+
+```bash
+curl -s -X POST http://localhost:8002/renew   -H "Content-Type: application/json"   -d '{"refresh_token":"<JWT_REFRESH_TOKEN>"}'
+```
+
+Successful response (200 OK):
+
+```json
+{
+  "access_token": "<NEW_JWT_ACCESS_TOKEN>",
+  "access_token_expires_at": "2025-11-30T12:44:56Z"
+}
+```
+
+### Revoke session
+
+```bash
+curl -X POST http://localhost:8002/revoke/8a4f2d9e-1a3b-4c2a-9b8f-0a1b2c3d4e5f
+```
 
 ---
 
@@ -254,4 +305,4 @@ TOKEN=$(curl -s -X POST http://localhost:8001/login   -H "Content-Type: applicat
 
 ## 5. Notes
 
-- JWT refresh login endpoint still needs implementation
+- If you need any help or are having any issue with it, contact `rafael.cr.carneiro@gmail.com` for assistance.
