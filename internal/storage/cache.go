@@ -80,7 +80,7 @@ func (c *Cache[K, T]) Clear() {
 
 	// Just to make sure that the memory of each
 	// bucket is clear at a certain level... even
-	// though it impacts the perfomance
+	// though it impacts the perfomance.
 	runtime.GC()
 
 	c.data = make(map[K]*Data[T])
