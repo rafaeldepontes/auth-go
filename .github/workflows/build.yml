@@ -1,0 +1,78 @@
+name: Build
+
+on:
+  workflow_run:
+    workflows: ["Tests"]
+    types:
+      - completed
+
+env:
+  GO_VERSION: "1.25"
+
+jobs:
+  build:
+    name: Build binaries (matrix)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os_label: [windows, linux, mac]
+        target: [jwt-refresh-based, jwt-based, cookie-based]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Build ${{ matrix.os_label }} / ${{ matrix.target }}
+        run: |
+          set -e
+          if [ "${{ matrix.os_label }}" = "mac" ]; then
+            GOOS=darwin
+            OUT_DIR="mac"
+          else
+            GOOS=${{ matrix.os_label }}
+            OUT_DIR=${{ matrix.os_label }}
+          fi
+
+          export GOOS
+          export GOARCH=amd64
+
+          mkdir -p bin/${OUT_DIR}/${{ matrix.target }}
+
+          SRC="./cmd/${{ matrix.target }}/main.go"
+          if [ ! -f "${SRC}" ]; then
+            echo "ERRO: arquivo não encontrado: ${SRC}"
+            exit 1
+          fi
+
+          if [ "${OUT_DIR}" = "windows" ]; then
+            BINARY_NAME="app.exe"
+          else
+            BINARY_NAME="app"
+          fi
+
+          echo "Building GOOS=${GOOS} GOARCH=${GOARCH} -> bin/${OUT_DIR}/${{ matrix.target }}/${BINARY_NAME}"
+          go build -v -o bin/${OUT_DIR}/${{ matrix.target }}/${BINARY_NAME} ${SRC}
+
+      - name: List produced files
+        run: ls -R bin || true
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.os_label }}-${{ matrix.target }}
+          path: bin/${{ matrix.os_label }}/${{ matrix.target }}/${{ matrix.target }} || bin/${{ matrix.os_label }}/${{ matrix.target }}/
