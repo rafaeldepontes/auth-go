@@ -37,7 +37,7 @@ func initLogger() *log.Logger {
 	}
 }
 
-// Init initialize all the resources needed for the server run properly
+// Init initialize all the resources needed for the server run properly.
 func Init() (*configs.Configuration, *Application, *sql.DB, error) {
 	var logger *log.Logger = initLogger()
 	godotenv.Load(".env", ".env.example")

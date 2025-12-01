@@ -27,7 +27,7 @@ func NewSessionRepository(conn *sql.DB) *SessionRepository {
 }
 
 // CreateSession creates a new session, it expects a session object
-// and returns an error if any
+// and returns an error if any.
 func (r *SessionRepository) CreateSession(session *Session) (string, error) {
 	query := `
 	INSERT INTO sessions (id, username, is_revoked, refresh_token, expires_at)

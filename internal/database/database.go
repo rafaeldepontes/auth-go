@@ -8,7 +8,7 @@ import (
 )
 
 // Open opens a database without having to take care of the logic, just calling
-// the function should give you the connection with nothing wrong occurs
+// the function should give you the connection with nothing wrong occurs.
 func Open() (*sql.DB, error) {
 	var db *sql.DB
 	db, err := sql.Open("pgx", os.Getenv("DATABASE_URL"))
