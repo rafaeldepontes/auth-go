@@ -67,7 +67,7 @@ func (r *SessionRepository) FindSessionById(id string) (*Session, error) {
 	defer stmt.Close()
 
 	var session Session
-	err = stmt.QueryRow(id).Scan(&session)
+	err = stmt.QueryRow(id).Scan(&session.Id, &session.Username, &session.IsRevoked, &session.RefreshToken, &session.CreatedAt, &session.ExpiresAt)
 	if err != nil {
 		return nil, err
 	}

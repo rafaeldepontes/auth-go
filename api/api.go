@@ -55,8 +55,10 @@ func Init() (*configs.Configuration, *Application, *sql.DB, error) {
 
 	var userRepository *repository.UserRepository = repository.NewUserRepository(db)
 	var sessionRepository *repository.SessionRepository = repository.NewSessionRepository(db)
+
 	var userService *service.UserService = service.NewUserService(userRepository, logger, caches)
 	var authService *service.AuthService = service.NewAuthService(userRepository, sessionRepository, logger, config.SecretKey, caches)
+
 	var middleware *middleware.Middleware = middleware.NewMiddleware(config.SecretKey, caches)
 
 	application := &Application{
