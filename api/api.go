@@ -12,12 +12,12 @@ import (
 	authServer "github.com/rafaeldepontes/auth-go/internal/auth/server"
 	authService "github.com/rafaeldepontes/auth-go/internal/auth/service"
 	"github.com/rafaeldepontes/auth-go/internal/cache"
-	"github.com/rafaeldepontes/auth-go/internal/database"
 	"github.com/rafaeldepontes/auth-go/internal/middleware"
 	"github.com/rafaeldepontes/auth-go/internal/user"
 	userRepository "github.com/rafaeldepontes/auth-go/internal/user/repository"
 	userServer "github.com/rafaeldepontes/auth-go/internal/user/server"
 	userService "github.com/rafaeldepontes/auth-go/internal/user/service"
+	"github.com/rafaeldepontes/auth-go/pkg/db/postgres"
 
 	log "github.com/sirupsen/logrus"
 	prefixed "github.com/x-cray/logrus-prefixed-formatter"
@@ -65,7 +65,7 @@ func Init() (*configs.Configuration, *Application, *sql.DB, error) {
 
 	auth.InitOAuth(config)
 
-	db, err := database.Open()
+	db, err := postgres.Open()
 
 	var caches *cache.Caches = cache.NewCacheStorage()
 
@@ -82,7 +82,7 @@ func Init() (*configs.Configuration, *Application, *sql.DB, error) {
 
 	application := &Application{
 		UserController: &userController,
-		AuthController:    &authController,
+		AuthController: &authController,
 		Middleware:     middleware,
 		Logger:         logger,
 	}
