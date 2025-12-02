@@ -125,7 +125,8 @@ URL_CALLBACK="http://localhost:8000/auth/google/callback" # change this if you'r
 Base path: `/api/v1`
 
 - **GET** | `/users/{id}`
-- **GET** | `/users?page=$&size=$`
+- **GET** | `/users/cursor-pagination?size=$cursor=$`
+- **GET** | `/users/offset-pagination?page=$&size=$`
 - **PATCH** | `/users/{username}`
 - **DELETE** | `/users/{username}`
 
@@ -319,10 +320,15 @@ Example handler behavior (simplified)
 
 ## 3. Protected Endpoints (detail)
 
-### **GET /api/v1/users**
+### **GET /api/v1/users/offset-pagination**
 
 Paginated list\
 Supports: - `?page=1` - `?size=25`
+
+### **GET /api/v1/users/cursor-pagination**
+
+Paginated list\
+Supports: - `?cursor=0` - `?size=25`
 
 ### **GET /api/v1/users/{id}**
 
