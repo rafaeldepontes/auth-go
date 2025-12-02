@@ -35,7 +35,7 @@ func (repo *UserRepository) FindAllUsers(size, page int) ([]User, int, error) {
 		return nil, 0, err
 	}
 
-	query := `SELECT id, username, age FROM users LIMIT $1 OFFSET $2;`
+	query := `SELECT id, username, age FROM users ORDER BY id ASC LIMIT $1 OFFSET $2;`
 	offset := (page - 1) * size
 
 	stmt, err := repo.db.Prepare(query)
