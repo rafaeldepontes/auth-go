@@ -8,11 +8,16 @@ import (
 
 	"github.com/rafaeldepontes/auth-go/configs"
 	"github.com/rafaeldepontes/auth-go/internal/auth"
+	authRepository "github.com/rafaeldepontes/auth-go/internal/auth/repository"
+	authServer "github.com/rafaeldepontes/auth-go/internal/auth/server"
+	authService "github.com/rafaeldepontes/auth-go/internal/auth/service"
+	"github.com/rafaeldepontes/auth-go/internal/cache"
 	"github.com/rafaeldepontes/auth-go/internal/database"
-	"github.com/rafaeldepontes/auth-go/internal/database/repository"
 	"github.com/rafaeldepontes/auth-go/internal/middleware"
-	"github.com/rafaeldepontes/auth-go/internal/service"
-	"github.com/rafaeldepontes/auth-go/internal/storage"
+	"github.com/rafaeldepontes/auth-go/internal/user"
+	userRepository "github.com/rafaeldepontes/auth-go/internal/user/repository"
+	userServer "github.com/rafaeldepontes/auth-go/internal/user/server"
+	userService "github.com/rafaeldepontes/auth-go/internal/user/service"
 
 	log "github.com/sirupsen/logrus"
 	prefixed "github.com/x-cray/logrus-prefixed-formatter"
@@ -62,21 +67,24 @@ func Init() (*configs.Configuration, *Application, *sql.DB, error) {
 
 	db, err := database.Open()
 
-	var caches *storage.Caches = storage.NewCacheStorage()
+	var caches *cache.Caches = cache.NewCacheStorage()
 
-	var userRepository *repository.UserRepository = repository.NewUserRepository(db)
-	var sessionRepository *repository.SessionRepository = repository.NewSessionRepository(db)
+	var userRepository user.Repository = userRepository.NewUserRepository(db)
+	var sessionRepository auth.Repository = authRepository.NewSessionRepository(db)
 
-	var userService *service.UserService = service.NewUserService(userRepository, logger, caches)
-	var authService *service.AuthService = service.NewAuthService(userRepository, sessionRepository, logger, config.JwtSecretKey, caches)
+	var userService user.Service = userService.NewUserService(&userRepository, logger, caches)
+	var authService auth.Service = authService.NewAuthService(&userRepository, &sessionRepository, logger, config.JwtSecretKey, caches)
+
+	var userController user.Controller = userServer.NewUserController(&userService)
+	var authController auth.Controller = authServer.NewAuthController(&authService)
 
 	var middleware *middleware.Middleware = middleware.NewMiddleware(config.JwtSecretKey, caches)
 
 	application := &Application{
-		UserService: userService,
-		AuthService: authService,
-		Middleware:  middleware,
-		Logger:      logger,
+		UserController: &userController,
+		AuthController:    &authController,
+		Middleware:     middleware,
+		Logger:         logger,
 	}
 
 	return config, application, db, err

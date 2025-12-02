@@ -4,24 +4,19 @@ import (
 	"database/sql"
 	"errors"
 
+	"github.com/rafaeldepontes/auth-go/internal/domain"
 	"github.com/rafaeldepontes/auth-go/internal/errorhandler"
+	"github.com/rafaeldepontes/auth-go/internal/user"
 )
 
-type UserRepository struct {
+type userRepository struct {
 	db *sql.DB
-}
-
-type User struct {
-	Username       *string `json:"username"`
-	HashedPassword *string `json:"-"`
-	Id             *int64  `json:"id,omitempty"`
-	Age            *int    `json:"age,omitempty"`
 }
 
 // NewUserRepository initialize a new UserRepository containing
 // a database connection, it returns a pointer to the new UserRepository.
-func NewUserRepository(conn *sql.DB) *UserRepository {
-	return &UserRepository{
+func NewUserRepository(conn *sql.DB) user.Repository {
+	return &userRepository{
 		db: conn,
 	}
 }
@@ -32,7 +27,7 @@ func NewUserRepository(conn *sql.DB) *UserRepository {
 //
 // returns a slice of User, the total of records in the database
 // and an Error if any.
-func (repo *UserRepository) FindAllUsersCursor(cursor int64, size int) ([]User, int64, error) {
+func (repo *userRepository) FindAllUsersCursor(cursor int64, size int) ([]domain.User, int64, error) {
 	query := `
 		SELECT id, username, age
 		FROM users
@@ -46,9 +41,9 @@ func (repo *UserRepository) FindAllUsersCursor(cursor int64, size int) ([]User, 
 	}
 	defer rows.Close()
 
-	users := make([]User, 0, size)
+	users := make([]domain.User, 0, size)
 	for rows.Next() {
-		var u User
+		var u domain.User
 		if err := rows.Scan(&u.Id, &u.Username, &u.Age); err != nil {
 			return nil, 0, err
 		}
@@ -74,7 +69,7 @@ func (repo *UserRepository) FindAllUsersCursor(cursor int64, size int) ([]User, 
 // using a pagination method based on offset and limit
 // returns a slice of User, the total of records in the database
 // and an Error if any.
-func (repo *UserRepository) FindAllUsers(size, page int) ([]User, int, error) {
+func (repo *userRepository) FindAllUsers(size, page int) ([]domain.User, int, error) {
 	queryCount := `SELECT COUNT(id) FROM users;`
 
 	var total int
@@ -97,10 +92,10 @@ func (repo *UserRepository) FindAllUsers(size, page int) ([]User, int, error) {
 	}
 	defer rows.Close()
 
-	var users []User
+	var users []domain.User
 
 	for rows.Next() {
-		var u User
+		var u domain.User
 		if err := rows.Scan(&u.Id, &u.Username, &u.Age); err != nil {
 			return nil, 0, err
 		}
@@ -116,8 +111,8 @@ func (repo *UserRepository) FindAllUsers(size, page int) ([]User, int, error) {
 
 // FindUserById search for an user by his id
 // returns the user and an error if any.
-func (repo *UserRepository) FindUserById(id int64) (*User, error) {
-	var user User
+func (repo *userRepository) FindUserById(id int64) (*domain.User, error) {
+	var user domain.User
 	query := `SELECT id, username, age FROM users WHERE id = $1;`
 	row := repo.db.QueryRow(query, id)
 	if err := row.Scan(&user.Id, &user.Username, &user.Age); err != nil {
@@ -131,8 +126,8 @@ func (repo *UserRepository) FindUserById(id int64) (*User, error) {
 
 // FindUserByUsername search for an user by his username
 // returns the user and an error if any.
-func (repo *UserRepository) FindUserByUsername(username string) (*User, error) {
-	var user User
+func (repo *userRepository) FindUserByUsername(username string) (*domain.User, error) {
+	var user domain.User
 	query := `SELECT id, password, username, age FROM users WHERE username = $1;`
 
 	stmt, err := repo.db.Prepare(query)
@@ -151,7 +146,7 @@ func (repo *UserRepository) FindUserByUsername(username string) (*User, error) {
 
 // RegisterUser saves a new user into the database, expects a
 // pointer to a user and returns an error if any.
-func (repo *UserRepository) RegisterUser(u *User) error {
+func (repo *userRepository) RegisterUser(u *domain.User) error {
 	query := `
 		INSERT INTO users (username, password, age)
 		VALUES ($1, $2, $3)
@@ -164,7 +159,7 @@ func (repo *UserRepository) RegisterUser(u *User) error {
 // SetUserToken save the user token into the database, expects
 // both csrft and session token and also the Id related to the user
 // returns an error if any.
-func (repo *UserRepository) SetUserToken(token, csrfToken string, userId int64) error {
+func (repo *userRepository) SetUserToken(token, csrfToken string, userId int64) error {
 	query := `
 	UPDATE users 
 	SET session_token = $1, 
@@ -185,7 +180,7 @@ func (repo *UserRepository) SetUserToken(token, csrfToken string, userId int64) 
 
 // UpdateUserDetails updates the user details in the ddatabase
 // with the new username and/or age, returns an erro if any.
-func (repo *UserRepository) UpdateUserDetails(user *User) error {
+func (repo *userRepository) UpdateUserDetails(user *domain.User) error {
 	query := `
 	UPDATE users
 	SET age = $1
@@ -209,7 +204,7 @@ func (repo *UserRepository) UpdateUserDetails(user *User) error {
 
 // DeleteAccount deletes the user account from the database
 // based on the username, returns an error if any.
-func (repo *UserRepository) DeleteAccount(username string) error {
+func (repo *userRepository) DeleteAccount(username string) error {
 	_, err := repo.db.Exec(`DELETE FROM users WHERE username = $1`, username)
 	return err
 }

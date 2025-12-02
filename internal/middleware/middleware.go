@@ -6,14 +6,14 @@ import (
 	"strings"
 
 	"github.com/rafaeldepontes/auth-go/internal/errorhandler"
-	"github.com/rafaeldepontes/auth-go/internal/storage"
+	"github.com/rafaeldepontes/auth-go/internal/cache"
 	jwt "github.com/rafaeldepontes/auth-go/internal/token"
 )
 
 type Middleware struct {
 	JwtBuilder *jwt.JwtBuilder
-	UserCache  *storage.Cache[string, string]
-	Cache      *storage.Caches
+	UserCache  *cache.Cache[string, string]
+	Cache      *cache.Caches
 }
 
 type contextKey string
@@ -22,7 +22,7 @@ const TokenContextKey = contextKey("token")
 
 var Token_Prefix = "Bearer "
 
-func NewMiddleware(sk string, cache *storage.Caches) *Middleware {
+func NewMiddleware(sk string, cache *cache.Caches) *Middleware {
 	return &Middleware{
 		JwtBuilder: jwt.NewJwtBuilder(sk),
 		Cache:      cache,

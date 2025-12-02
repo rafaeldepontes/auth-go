@@ -11,12 +11,13 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/markbates/goth/gothic"
-	"github.com/rafaeldepontes/auth-go/internal/database/repository"
+	"github.com/rafaeldepontes/auth-go/internal/auth"
+	"github.com/rafaeldepontes/auth-go/internal/cache"
 	"github.com/rafaeldepontes/auth-go/internal/domain"
 	"github.com/rafaeldepontes/auth-go/internal/errorhandler"
-	"github.com/rafaeldepontes/auth-go/internal/storage"
 	"github.com/rafaeldepontes/auth-go/internal/template"
 	"github.com/rafaeldepontes/auth-go/internal/token"
+	"github.com/rafaeldepontes/auth-go/internal/user"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -26,18 +27,18 @@ const (
 	Token_Length = 32
 )
 
-type AuthService struct {
+type authService struct {
 	jwtMaker          *token.JwtBuilder
-	userRepository    *repository.UserRepository
-	sessionRepository *repository.SessionRepository
+	userRepository    *user.Repository
+	sessionRepository *auth.Repository
 	Logger            *log.Logger
-	Cache             *storage.Caches
+	Cache             *cache.Caches
 }
 
 // NewAuthService initialize a new AuthService containing a UserRepository for
 // login and register operations ONLY.
-func NewAuthService(userRepo *repository.UserRepository, sessionRepo *repository.SessionRepository, logg *log.Logger, secretKey string, cache *storage.Caches) *AuthService {
-	return &AuthService{
+func NewAuthService(userRepo *user.Repository, sessionRepo *auth.Repository, logg *log.Logger, secretKey string, cache *cache.Caches) auth.Service {
+	return &authService{
 		userRepository:    userRepo,
 		sessionRepository: sessionRepo,
 		Logger:            logg,
@@ -49,7 +50,7 @@ func NewAuthService(userRepo *repository.UserRepository, sessionRepo *repository
 // Register is a generic register system that can be use in any case,
 // it doesnt returns nothing and only insert a new user into the database
 // after a bunch of validations.
-func (s *AuthService) Register(w http.ResponseWriter, r *http.Request) {
+func (s *authService) Register(w http.ResponseWriter, r *http.Request) {
 	s.Logger.Infoln("Registering a new user")
 
 	if r.Method != http.MethodPost {
@@ -58,7 +59,7 @@ func (s *AuthService) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var user repository.User
+	var user domain.User
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
 		s.Logger.Errorf("An error occurred: %v", err)
@@ -84,7 +85,7 @@ func (s *AuthService) Register(w http.ResponseWriter, r *http.Request) {
 
 	*password = string(hashedPassword)
 
-	err = s.userRepository.RegisterUser(&user)
+	err = (*s.userRepository).RegisterUser(&user)
 	if err != nil {
 		s.Logger.Errorf("An error occurred: %v", err)
 		errorhandler.InternalErrorHandler(w)
@@ -99,8 +100,8 @@ func (s *AuthService) Register(w http.ResponseWriter, r *http.Request) {
 
 // LoginCookieBased uses the cookie authorization flow, creating a token that needs to be
 // in the request cookie.
-func (s *AuthService) LoginCookieBased(w http.ResponseWriter, r *http.Request) {
-	var user *repository.User = loginFlow(s, w, r)
+func (s *authService) LoginCookieBased(w http.ResponseWriter, r *http.Request) {
+	var user *domain.User = loginFlow(s, w, r)
 	if user == nil {
 		return
 	}
@@ -110,7 +111,7 @@ func (s *AuthService) LoginCookieBased(w http.ResponseWriter, r *http.Request) {
 	sessionToken := token.GenerateToken(Token_Length)
 	csrfToken := token.GenerateToken(Token_Length)
 
-	err := s.userRepository.SetUserToken(sessionToken, csrfToken, *user.Id)
+	err := (*s.userRepository).SetUserToken(sessionToken, csrfToken, *user.Id)
 	if err != nil {
 		s.Logger.Errorf("An error occurred: %v", err)
 		errorhandler.InternalErrorHandler(w)
@@ -144,8 +145,8 @@ func (s *AuthService) LoginCookieBased(w http.ResponseWriter, r *http.Request) {
 
 // LoginJwtBased uses the Jwt method to create a access token, with it
 // all the features are available until it expires.
-func (s *AuthService) LoginJwtBased(w http.ResponseWriter, r *http.Request) {
-	var user *repository.User = loginFlow(s, w, r)
+func (s *authService) LoginJwtBased(w http.ResponseWriter, r *http.Request) {
+	var user *domain.User = loginFlow(s, w, r)
 	if user == nil {
 		return
 	}
@@ -178,8 +179,8 @@ func (s *AuthService) LoginJwtBased(w http.ResponseWriter, r *http.Request) {
 // all the features are available until it expires, but it cames with a refresh
 // token that can be used in another call to gain access again until the refresh
 // one expires...
-func (s *AuthService) LoginJwtRefreshBased(w http.ResponseWriter, r *http.Request) {
-	var user *repository.User = loginFlow(s, w, r)
+func (s *authService) LoginJwtRefreshBased(w http.ResponseWriter, r *http.Request) {
+	var user *domain.User = loginFlow(s, w, r)
 	if user == nil {
 		return
 	}
@@ -199,7 +200,7 @@ func (s *AuthService) LoginJwtRefreshBased(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	sessionId, err := s.sessionRepository.CreateSession(&repository.Session{
+	sessionId, err := (*s.sessionRepository).CreateSession(&domain.Session{
 		Id:           refreshClaims.RegisteredClaims.ID,
 		Username:     *user.Username,
 		RefreshToken: refreshToken,
@@ -228,7 +229,7 @@ func (s *AuthService) LoginJwtRefreshBased(w http.ResponseWriter, r *http.Reques
 // RenewAccessToken accepts a json body for the request, in it should have the
 // refresh token available at the login call. After called and with a proper token
 // it gives another access token for futher uses.
-func (s *AuthService) RenewAccessToken(w http.ResponseWriter, r *http.Request) {
+func (s *authService) RenewAccessToken(w http.ResponseWriter, r *http.Request) {
 	var maker *token.JwtBuilder = s.jwtMaker
 
 	var req domain.RenewAccessTokenRequest
@@ -245,8 +246,8 @@ func (s *AuthService) RenewAccessToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var session *repository.Session
-	session, err = s.sessionRepository.FindSessionById(refreshClaims.ID)
+	var session *domain.Session
+	session, err = (*s.sessionRepository).FindSessionById(refreshClaims.ID)
 	if err != nil {
 		s.Logger.Errorf("An error occurred: %v", err)
 		errorhandler.BadRequestErrorHandler(w, errorhandler.ErrInvalidToken, r.URL.Path)
@@ -283,7 +284,7 @@ func (s *AuthService) RenewAccessToken(w http.ResponseWriter, r *http.Request) {
 }
 
 // RevokeSession disable a refresh token, preventing futher requests.
-func (s *AuthService) RevokeSession(w http.ResponseWriter, r *http.Request) {
+func (s *authService) RevokeSession(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	if id == "" {
 		s.Logger.Errorf("An error occurred: %v", errorhandler.ErrIdIsRequired)
@@ -291,7 +292,7 @@ func (s *AuthService) RevokeSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := s.sessionRepository.RevokeSession(id)
+	err := (*s.sessionRepository).RevokeSession(id)
 	if err != nil {
 		s.Logger.Errorf("An error occurred: %v", err)
 		errorhandler.BadRequestErrorHandler(w, errorhandler.ErrInvalidSession, r.URL.Path)
@@ -301,7 +302,7 @@ func (s *AuthService) RevokeSession(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (s *AuthService) GetAuthCallbackOAuth2(w http.ResponseWriter, r *http.Request) {
+func (s *authService) GetAuthCallbackOAuth2(w http.ResponseWriter, r *http.Request) {
 	provider := chi.URLParam(r, "provider")
 
 	r = r.WithContext(context.WithValue(context.Background(), "provider", provider))
@@ -318,13 +319,13 @@ func (s *AuthService) GetAuthCallbackOAuth2(w http.ResponseWriter, r *http.Reque
 	t.Execute(w, user)
 }
 
-func (s *AuthService) LogoutOAuth2(w http.ResponseWriter, r *http.Request) {
+func (s *authService) LogoutOAuth2(w http.ResponseWriter, r *http.Request) {
 	gothic.Logout(w, r)
 	w.Header().Set("Location", "/")
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }
 
-func (s *AuthService) GetAuthOAuth2(w http.ResponseWriter, r *http.Request) {
+func (s *authService) GetAuthOAuth2(w http.ResponseWriter, r *http.Request) {
 	if gothUser, err := gothic.CompleteUserAuth(w, r); err == nil {
 		s.Logger.Infoln(gothUser)
 		t, _ := httpTemplate.New("foo").Parse(template.UserTemplate)
@@ -334,7 +335,7 @@ func (s *AuthService) GetAuthOAuth2(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func isValidUser(newUser *repository.User, s *AuthService) (bool, error) {
+func isValidUser(newUser *domain.User, s *authService) (bool, error) {
 	if username := newUser.Username; *username == "" {
 		return false, errorhandler.ErrUsernameIsRequired
 	}
@@ -347,7 +348,7 @@ func isValidUser(newUser *repository.User, s *AuthService) (bool, error) {
 		return false, errorhandler.ErrAgeIsRequired
 	}
 
-	user, err := s.userRepository.FindUserByUsername(*newUser.Username)
+	user, err := (*s.userRepository).FindUserByUsername(*newUser.Username)
 	if user != nil {
 		s.Logger.Errorf("An error occurred: %v\n", err)
 		return false, errorhandler.ErrUserAlreadyExists
@@ -356,7 +357,7 @@ func isValidUser(newUser *repository.User, s *AuthService) (bool, error) {
 	return true, nil
 }
 
-func loginFlow(s *AuthService, w http.ResponseWriter, r *http.Request) *repository.User {
+func loginFlow(s *authService, w http.ResponseWriter, r *http.Request) *domain.User {
 	s.Logger.Infoln("Trying to login user")
 
 	if r.Method != http.MethodPost {
@@ -373,8 +374,8 @@ func loginFlow(s *AuthService, w http.ResponseWriter, r *http.Request) *reposito
 		return nil
 	}
 
-	var userInTheDatabase *repository.User
-	userInTheDatabase, err = s.userRepository.FindUserByUsername(user.Username)
+	var userInTheDatabase *domain.User
+	userInTheDatabase, err = (*s.userRepository).FindUserByUsername(user.Username)
 	if err != nil {
 		s.Logger.Errorf("An error occurred: %v", errorhandler.ErrUserNotFound)
 		errorhandler.BadRequestErrorHandler(w, errorhandler.ErrUserNotFound, r.URL.Path)

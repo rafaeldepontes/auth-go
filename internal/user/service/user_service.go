@@ -5,30 +5,30 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/rafaeldepontes/auth-go/internal/database/repository"
+	"github.com/rafaeldepontes/auth-go/internal/cache"
 	"github.com/rafaeldepontes/auth-go/internal/domain"
 	"github.com/rafaeldepontes/auth-go/internal/errorhandler"
 	"github.com/rafaeldepontes/auth-go/internal/pagination"
-	"github.com/rafaeldepontes/auth-go/internal/storage"
+	"github.com/rafaeldepontes/auth-go/internal/user"
 	log "github.com/sirupsen/logrus"
 )
 
-type UserService struct {
-	userRepository *repository.UserRepository
-	Logger         *log.Logger
-	Cache          *storage.Caches
+type userService struct {
+	repo   *user.Repository
+	Logger *log.Logger
+	Cache  *cache.Caches
 }
 
 // NewUserService initialize a new UserService containing a UserRepository.
-func NewUserService(userRepo *repository.UserRepository, logg *log.Logger, cache *storage.Caches) *UserService {
-	return &UserService{
-		userRepository: userRepo,
-		Logger:         logg,
-		Cache:          cache,
+func NewUserService(userRepo *user.Repository, logg *log.Logger, cache *cache.Caches) user.Service {
+	return &userService{
+		repo:   userRepo,
+		Logger: logg,
+		Cache:  cache,
 	}
 }
 
-func (s *UserService) FindAllUsersCursorPagination(w http.ResponseWriter, r *http.Request) {
+func (s *userService) FindAllUsersCursorPagination(w http.ResponseWriter, r *http.Request) {
 	s.Logger.Infoln("Listing all the users in the database using the cursor pagination...")
 
 	defaultValueCursor := "100"
@@ -54,8 +54,8 @@ func (s *UserService) FindAllUsersCursorPagination(w http.ResponseWriter, r *htt
 	// the next cursor value
 	size++
 
-	var users []repository.User
-	users, nextCursor, err := s.userRepository.FindAllUsersCursor(cursor, size)
+	var users []domain.User
+	users, nextCursor, err := (*s.repo).FindAllUsersCursor(cursor, size)
 	if err != nil {
 		errorhandler.BadRequestErrorHandler(w, err, r.URL.Path)
 		s.Logger.Errorf("An error occurred: %v", err)
@@ -73,7 +73,7 @@ func (s *UserService) FindAllUsersCursorPagination(w http.ResponseWriter, r *htt
 
 // FindAllUsers list all the users without a filter and returns each
 // one with pagination and a few datas missing for LGPD.
-func (s *UserService) FindAllUsersOffSetPagination(w http.ResponseWriter, r *http.Request) {
+func (s *userService) FindAllUsersOffSetPagination(w http.ResponseWriter, r *http.Request) {
 	s.Logger.Infoln("Listing all the users in the database using the offset pagination...")
 
 	defaultValueSize := "25"
@@ -100,8 +100,8 @@ func (s *UserService) FindAllUsersOffSetPagination(w http.ResponseWriter, r *htt
 		currentPage = 1
 	}
 
-	var users []repository.User
-	users, totalRecords, err := s.userRepository.FindAllUsers(size, currentPage)
+	var users []domain.User
+	users, totalRecords, err := (*s.repo).FindAllUsers(size, currentPage)
 	if err != nil {
 		errorhandler.BadRequestErrorHandler(w, err, r.URL.Path)
 		s.Logger.Errorf("An error occurred: %v", err)
@@ -119,7 +119,7 @@ func (s *UserService) FindAllUsersOffSetPagination(w http.ResponseWriter, r *htt
 
 // FindUserById list an user by his id and returns a none
 // pagination result and a few datas missing for LGPD.
-func (s *UserService) FindUserById(w http.ResponseWriter, r *http.Request) {
+func (s *userService) FindUserById(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	s.Logger.Infof("Listing user by id - %v", idStr)
 
@@ -132,8 +132,8 @@ func (s *UserService) FindUserById(w http.ResponseWriter, r *http.Request) {
 	pathId, _ := strconv.Atoi(idStr)
 	id := int64(pathId)
 
-	var user *repository.User
-	user, err := s.userRepository.FindUserById(id)
+	var user *domain.User
+	user, err := (*s.repo).FindUserById(id)
 	if err != nil {
 		errorhandler.BadRequestErrorHandler(w, errorhandler.ErrUserNotFound, r.URL.Path)
 		s.Logger.Errorf("An error occurred: %v", err)
@@ -148,7 +148,7 @@ func (s *UserService) FindUserById(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(user)
 }
 
-func (s *UserService) FindUserByUsername(w http.ResponseWriter, r *http.Request) {
+func (s *userService) FindUserByUsername(w http.ResponseWriter, r *http.Request) {
 	username := r.URL.Query().Get("username")
 	s.Logger.Infof("Listing user by username: %v", username)
 
@@ -158,8 +158,8 @@ func (s *UserService) FindUserByUsername(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	var user *repository.User
-	user, err := s.userRepository.FindUserByUsername(username)
+	var user *domain.User
+	user, err := (*s.repo).FindUserByUsername(username)
 	if err != nil {
 		errorhandler.BadRequestErrorHandler(w, errorhandler.ErrUserNotFound, r.URL.Path)
 		s.Logger.Errorf("An error occurred: %v", err)
@@ -173,12 +173,12 @@ func (s *UserService) FindUserByUsername(w http.ResponseWriter, r *http.Request)
 }
 
 // UpdateUserDetails changes the user age and/or name if it's the account owner.
-func (s *UserService) UpdateUserDetails(w http.ResponseWriter, r *http.Request) {
+func (s *userService) UpdateUserDetails(w http.ResponseWriter, r *http.Request) {
 	s.Logger.Infoln("Updating an user")
 
-	var user *repository.User
+	var user *domain.User
 	username := r.PathValue("username")
-	user, err := s.userRepository.FindUserByUsername(username)
+	user, err := (*s.repo).FindUserByUsername(username)
 	if err != nil {
 		s.Logger.Errorf("An error occurred: %v", err)
 		errorhandler.BadRequestErrorHandler(w, errorhandler.ErrUserNotFound, r.URL.Path)
@@ -200,7 +200,7 @@ func (s *UserService) UpdateUserDetails(w http.ResponseWriter, r *http.Request) 
 
 	user.Age = &newUserDetails.Age
 
-	err = s.userRepository.UpdateUserDetails(user)
+	err = (*s.repo).UpdateUserDetails(user)
 	if err != nil {
 		s.Logger.Errorf("An error occurred: %v", err)
 		errorhandler.InternalErrorHandler(w)
@@ -215,11 +215,11 @@ func (s *UserService) UpdateUserDetails(w http.ResponseWriter, r *http.Request) 
 
 // DeleteAccount deletes the user from the database by his username
 // if it's the account owner.
-func (s *UserService) DeleteAccount(w http.ResponseWriter, r *http.Request) {
+func (s *userService) DeleteAccount(w http.ResponseWriter, r *http.Request) {
 	username := r.PathValue("username")
 	s.Logger.Infof("Deleting an account by his username: %v\n", username)
 
-	err := s.userRepository.DeleteAccount(username)
+	err := (*s.repo).DeleteAccount(username)
 	if err != nil {
 		s.Logger.Errorf("An error occurred: %v", err)
 		errorhandler.InternalErrorHandler(w)
@@ -233,7 +233,7 @@ func (s *UserService) DeleteAccount(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode("Account deleted successfully")
 }
 
-func isValidUserDetails(user *repository.User, userRequest *domain.UserDetails) error {
+func isValidUserDetails(user *domain.User, userRequest *domain.UserDetails) error {
 	if userRequest.Age <= 0 {
 		return errorhandler.ErrAgeIsRequired
 	}

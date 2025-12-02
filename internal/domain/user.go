@@ -8,3 +8,10 @@ type UserLogin struct {
 type UserDetails struct {
 	Age int
 }
+
+type User struct {
+	Username       *string `json:"username"`
+	HashedPassword *string `json:"password,omitempty"`
+	Id             *int64  `json:"id,omitempty"`
+	Age            *int    `json:"age,omitempty"`
+}

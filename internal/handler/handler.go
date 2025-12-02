@@ -4,6 +4,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/rafaeldepontes/auth-go/api"
+	authServer "github.com/rafaeldepontes/auth-go/internal/auth/server"
+	"github.com/rafaeldepontes/auth-go/internal/user/server"
 )
 
 // Handler controls the system routes based on *chi.Mux and a configuration struct.
@@ -13,21 +15,17 @@ func Handler(r *chi.Mux, app *api.Application, typeOf int) {
 	// Public
 	switch typeOf {
 	case api.CookieBased:
-		r.Post("/login", app.AuthService.LoginCookieBased)
+		authServer.MapAuthRoutesCookie(r, app.AuthController)
 	case api.JwtBased:
-		r.Post("/login", app.AuthService.LoginJwtBased)
+		authServer.MapAuthRoutesJwt(r, app.AuthController)
 	case api.JwtRefreshBased:
-		r.Post("/login", app.AuthService.LoginJwtRefreshBased)
-		r.Post("/renew", app.AuthService.RenewAccessToken)
-		r.Post("/revoke/{id}", app.AuthService.RevokeSession)
+		authServer.MapAuthRoutesJwtRefresh(r, app.AuthController)
 	case api.OAuth2:
-		r.Get("/auth/{prodiver}/callback", app.AuthService.GetAuthCallbackOAuth2)
-		r.Get("/logout/{provider}", app.AuthService.LogoutOAuth2)
-		r.Get("/auth/{provider}", app.AuthService.GetAuthOAuth2)
+		authServer.MapAuthRoutesOAuth2(r, app.AuthController)
 	default:
 		app.Logger.Fatalln("No authentication method was chosen.")
 	}
-	r.Post("/register", app.AuthService.Register)
+	authServer.MapAuthRoutes(r, app.AuthController)
 
 	// Protected
 	r.Group(func(r chi.Router) {
@@ -39,24 +37,18 @@ func Handler(r *chi.Mux, app *api.Application, typeOf int) {
 				r.Use(app.Middleware.JwtBased)
 			case api.JwtRefreshBased:
 				r.Use(app.Middleware.JwtRefreshBased)
-			case api.OAuth2:
-
+			case api.OAuth2: //do nothing...
 			default:
 				app.Logger.Fatal("No authentication method was chosen.")
 			}
 
-			// I could have done this in the same request, but for the learning purposes,
-			// I'm doing it separately.
-			r.Get("/users/cursor-pagination", app.UserService.FindAllUsersCursorPagination)
-			r.Get("/users/offset-pagination", app.UserService.FindAllUsersOffSetPagination)
-			r.Get("/users/{id}", app.UserService.FindUserById)
+			server.MapUserRoutes(&r, app.UserController)
 
 			switch typeOf {
 			case api.CookieBased:
 				app.Logger.Infoln("Cookie based authorization doens't allow this endpoints...")
 			default:
-				r.Patch("/users/{username}", app.UserService.UpdateUserDetails)
-				r.Delete("/users/{username}", app.UserService.DeleteAccount)
+				server.MapUserRoutesJwt(&r, app.UserController)
 			}
 		})
 	})
