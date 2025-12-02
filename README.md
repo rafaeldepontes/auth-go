@@ -125,7 +125,7 @@ URL_CALLBACK="http://localhost:8000/auth/google/callback" # change this if you'r
 Base path: `/api/v1`
 
 - **GET** | `/users/{id}`
-- **GET** | `/users/cursor-pagination?size=$cursor=$`
+- **GET** | `/users/cursor-pagination?size=$&cursor=$`
 - **GET** | `/users/offset-pagination?page=$&size=$`
 - **PATCH** | `/users/{username}`
 - **DELETE** | `/users/{username}`
