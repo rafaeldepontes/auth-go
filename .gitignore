@@ -32,3 +32,4 @@ go.work.sum
 .vscode/
 
 .github/workflows/lint.yml
+secrets
