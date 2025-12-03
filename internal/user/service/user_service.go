@@ -64,7 +64,7 @@ func (s *userService) FindAllUsersCursorPagination(w http.ResponseWriter, r *htt
 
 	s.Logger.Infof("Found %v users, the next should be %v", len(users), nextCursor)
 
-	pageModel := pagination.NewCursorPagination(users, size, nextCursor)
+	pageModel := pagination.NewCursorPagination(users, size-1, nextCursor)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
