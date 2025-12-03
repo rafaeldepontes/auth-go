@@ -71,7 +71,7 @@ DATABASE_URL="postgres://root:example@localhost:5432/postgres"
 #-------------------------------------
 
 ISSUER="golang"
-JWT_SECRET_KEY="secretKeyExample"
+JWT_SECRET_KEY="<your-secret-key-for-jwt-token>"
 TOKEN_DURATION="15" # In minutes...
 
 #-------------------------------------
@@ -80,6 +80,10 @@ GOOGLE_KEY="<your-secret-key-from-google-oauth2>"
 GOOGLE_CLIENT_ID="<your-client-id-from-google-oauth2>"
 GOOGLE_CLIENT_SECRET="random secret... omg!!"
 URL_CALLBACK="http://localhost:8000/auth/google/callback" # change this if you're running the application in another port...
+
+#-------------------------------------
+
+SECRET_CURSOR_KEY="<your-secret-key-for-cursor-hash>"
 ```
 
 ## How to use
