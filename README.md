@@ -84,6 +84,7 @@ URL_CALLBACK="http://localhost:8000/auth/google/callback" # change this if you'r
 #-------------------------------------
 
 SECRET_CURSOR_KEY="<your-secret-key-for-cursor-hash>"
+SIGNATURE_LENGTH="32" # Default length for sha256
 ```
 
 ## How to use
@@ -129,6 +130,7 @@ SECRET_CURSOR_KEY="<your-secret-key-for-cursor-hash>"
 Base path: `/api/v1`
 
 - **GET** | `/users/{id}`
+- **GET** | `/users/hashed-cursor-pagination`
 - **GET** | `/users/cursor-pagination?size=$&cursor=$`
 - **GET** | `/users/offset-pagination?page=$&size=$`
 - **PATCH** | `/users/{username}`
@@ -328,6 +330,24 @@ Example handler behavior (simplified)
 
 Paginated list\
 Supports: - `?page=1` - `?size=25`
+
+### **GET /api/v1/users/hashed-cursor-pagination**
+
+Paginated list with a hash to ensure security. Example body:
+
+```json
+{
+  "cursor": ""
+}
+```
+
+OR
+
+```json
+{
+  "cursor": "eyJzaXplIjoxMywibmV4dF9jdXJzb3..."
+}
+```
 
 ### **GET /api/v1/users/cursor-pagination**
 
