@@ -63,6 +63,7 @@ Create a `.env` file (example provided in the project). The service expects at l
 JWT_PORT = "localhost:8001"
 COOKIE_PORT = "localhost:8000"
 JWT_REFRESH_PORT = "localhost:8002"
+OAUTH2_PORT = "localhost:8003"
 
 #-------------------------------------
 
@@ -169,6 +170,8 @@ Your server can run in one of three modes:
 - JWT-based | `JWT_PORT=8001`
 
 - JWT + Refresh | `JWT_REFRESH_PORT=8002`
+
+- OAuth2 | `OAUTH2_PORT=8003`
 
 ---
 
