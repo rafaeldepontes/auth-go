@@ -30,3 +30,12 @@ func NewCursorPagination[T any](data []T, size int, nextCursor int64) *domain.Cu
 		NextCursor: nextCursor,
 	}
 }
+
+// NewCursorHashedPagination accepts a generic T type, a slice of any data, a size of records per page and
+// the next page being a pointer to the next id in the database and it will return a CursorHashedPagination.
+func NewCursorHashedPagination[T any](data []T, src string) *domain.CursorHashedPagination[T] {
+	return &domain.CursorHashedPagination[T]{
+		Data:       data,
+		NextCursor: src,
+	}
+}
