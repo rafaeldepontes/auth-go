@@ -28,6 +28,61 @@ func NewUserService(userRepo *user.Repository, logg *log.Logger, cache *cache.Ca
 	}
 }
 
+func (s *userService) FindAllUsersHashedCursorPagination(w http.ResponseWriter, r *http.Request) {
+	s.Logger.Infoln("Listing all the users in the database using the cursor pagination with a hash...")
+
+	cs := pagination.NewCursorService[domain.User]()
+
+	var cursor domain.CursorResquest
+	json.NewDecoder(r.Body).Decode(&cursor)
+
+	var (
+		hashSrc string
+		cursorId int64
+		size int
+		nextCursor int64
+	)
+
+	cursorId = 1
+	size = 11
+
+	if cursor.HashedCursor != "" {
+		cursorBody, err := cs.Decode(cursor.HashedCursor)
+		if err != nil {
+			s.Logger.Errorf("An error occurred: %v", err)
+			errorhandler.InternalErrorHandler(w)
+			return
+		}
+		cursorBody.Size++
+
+		cursorId = cursorBody.NextCursor
+		size = cursorBody.Size
+	}
+
+	var users []domain.User
+	users, nextCursor, err := (*s.repo).FindAllUsersCursor(cursorId, size)
+	if err != nil {
+		errorhandler.BadRequestErrorHandler(w, err, r.URL.Path)
+		s.Logger.Errorf("An error occurred: %v", err)
+		return
+	}
+
+	s.Logger.Infof("Found %v users, the next should be %v", len(users), nextCursor)
+	
+	hashSrc, err = cs.Encode(size, nextCursor)
+	if err != nil {
+		s.Logger.Errorf("An error occurred: %v", err)
+		errorhandler.InternalErrorHandler(w)
+		return
+	}
+
+	pageModel := pagination.NewCursorHashedPagination(users, hashSrc)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(pageModel)
+}
+
 func (s *userService) FindAllUsersCursorPagination(w http.ResponseWriter, r *http.Request) {
 	s.Logger.Infoln("Listing all the users in the database using the cursor pagination...")
 
