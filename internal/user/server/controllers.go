@@ -16,6 +16,10 @@ func NewUserController(s *user.Service) user.Controller {
 	}
 }
 
+func (c *userController) ListAllHashedCursor(w http.ResponseWriter, r *http.Request) {
+	(*c.service).FindAllUsersHashedCursorPagination(w, r)
+}
+
 func (c *userController) ListAllCursor(w http.ResponseWriter, r *http.Request) {
 	(*c.service).FindAllUsersCursorPagination(w, r)
 }
