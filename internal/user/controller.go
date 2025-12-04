@@ -3,6 +3,7 @@ package user
 import "net/http"
 
 type Controller interface {
+	ListAllHashedCursor(w http.ResponseWriter, r *http.Request)
 	ListAllCursor(w http.ResponseWriter, r *http.Request)
 	ListAllOffset(w http.ResponseWriter, r *http.Request)
 	FindById(w http.ResponseWriter, r *http.Request)
