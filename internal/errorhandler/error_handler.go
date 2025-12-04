@@ -12,8 +12,10 @@ import (
 var (
 	ErrInvalidUsernameOrPassword = errors.New("Invalid username or password")
 	ErrInvalidTokenSigningMethod = errors.New("Invalid token signing method")
+	ErrInvalidCursorSignature    = errors.New("Cursor signature is invalid")
 	ErrInvalidTokenSignature     = errors.New("Token signature is invalid")
 	ErrInvalidExpiredToken       = errors.New("Invalid token, token already expired")
+	ErrInvalidCursorLength       = errors.New("Invalid cursor length")
 	ErrUsernameIsRequired        = errors.New("Username is required")
 	ErrPasswordIsRequired        = errors.New("Password is required")
 	ErrInvalidTokenClaim         = errors.New("Invalid token claims")
