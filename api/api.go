@@ -72,8 +72,8 @@ func Init() (*configs.Configuration, *Application, *sql.DB, error) {
 	var userRepository user.Repository = userRepository.NewUserRepository(db)
 	var sessionRepository auth.Repository = authRepository.NewSessionRepository(db)
 
-	var userService user.Service = userService.NewUserService(&userRepository, logger, caches)
-	var authService auth.Service = authService.NewAuthService(&userRepository, &sessionRepository, logger, config.JwtSecretKey, caches)
+	var userService user.Service = userService.NewUserService(userRepository, logger, caches)
+	var authService auth.Service = authService.NewAuthService(userRepository, sessionRepository, logger, config.JwtSecretKey, caches)
 
 	var userController user.Controller = userServer.NewUserController(&userService)
 	var authController auth.Controller = authServer.NewAuthController(&authService)
