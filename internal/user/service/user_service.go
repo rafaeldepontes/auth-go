@@ -14,13 +14,13 @@ import (
 )
 
 type userService struct {
-	repo   *user.Repository
+	repo   user.Repository
 	Logger *log.Logger
 	Cache  *cache.Caches
 }
 
 // NewUserService initialize a new UserService containing a UserRepository.
-func NewUserService(userRepo *user.Repository, logg *log.Logger, cache *cache.Caches) user.Service {
+func NewUserService(userRepo user.Repository, logg *log.Logger, cache *cache.Caches) user.Service {
 	return &userService{
 		repo:   userRepo,
 		Logger: logg,
@@ -37,9 +37,9 @@ func (s *userService) FindAllUsersHashedCursorPagination(w http.ResponseWriter, 
 	json.NewDecoder(r.Body).Decode(&cursor)
 
 	var (
-		hashSrc string
-		cursorId int64
-		size int
+		hashSrc    string
+		cursorId   int64
+		size       int
 		nextCursor int64
 	)
 
@@ -60,7 +60,7 @@ func (s *userService) FindAllUsersHashedCursorPagination(w http.ResponseWriter, 
 	}
 
 	var users []domain.User
-	users, nextCursor, err := (*s.repo).FindAllUsersCursor(cursorId, size)
+	users, nextCursor, err := s.repo.FindAllUsersCursor(cursorId, size)
 	if err != nil {
 		errorhandler.BadRequestErrorHandler(w, err, r.URL.Path)
 		s.Logger.Errorf("An error occurred: %v", err)
@@ -68,7 +68,7 @@ func (s *userService) FindAllUsersHashedCursorPagination(w http.ResponseWriter, 
 	}
 
 	s.Logger.Infof("Found %v users, the next should be %v", len(users), nextCursor)
-	
+
 	hashSrc, err = cs.Encode(size, nextCursor)
 	if err != nil {
 		s.Logger.Errorf("An error occurred: %v", err)
@@ -110,7 +110,7 @@ func (s *userService) FindAllUsersCursorPagination(w http.ResponseWriter, r *htt
 	size++
 
 	var users []domain.User
-	users, nextCursor, err := (*s.repo).FindAllUsersCursor(cursor, size)
+	users, nextCursor, err := s.repo.FindAllUsersCursor(cursor, size)
 	if err != nil {
 		errorhandler.BadRequestErrorHandler(w, err, r.URL.Path)
 		s.Logger.Errorf("An error occurred: %v", err)
@@ -156,7 +156,7 @@ func (s *userService) FindAllUsersOffSetPagination(w http.ResponseWriter, r *htt
 	}
 
 	var users []domain.User
-	users, totalRecords, err := (*s.repo).FindAllUsers(size, currentPage)
+	users, totalRecords, err := s.repo.FindAllUsers(size, currentPage)
 	if err != nil {
 		errorhandler.BadRequestErrorHandler(w, err, r.URL.Path)
 		s.Logger.Errorf("An error occurred: %v", err)
@@ -188,7 +188,7 @@ func (s *userService) FindUserById(w http.ResponseWriter, r *http.Request) {
 	id := int64(pathId)
 
 	var user *domain.User
-	user, err := (*s.repo).FindUserById(id)
+	user, err := s.repo.FindUserById(id)
 	if err != nil {
 		errorhandler.BadRequestErrorHandler(w, errorhandler.ErrUserNotFound, r.URL.Path)
 		s.Logger.Errorf("An error occurred: %v", err)
@@ -214,7 +214,7 @@ func (s *userService) FindUserByUsername(w http.ResponseWriter, r *http.Request)
 	}
 
 	var user *domain.User
-	user, err := (*s.repo).FindUserByUsername(username)
+	user, err := s.repo.FindUserByUsername(username)
 	if err != nil {
 		errorhandler.BadRequestErrorHandler(w, errorhandler.ErrUserNotFound, r.URL.Path)
 		s.Logger.Errorf("An error occurred: %v", err)
@@ -233,7 +233,7 @@ func (s *userService) UpdateUserDetails(w http.ResponseWriter, r *http.Request) 
 
 	var user *domain.User
 	username := r.PathValue("username")
-	user, err := (*s.repo).FindUserByUsername(username)
+	user, err := s.repo.FindUserByUsername(username)
 	if err != nil {
 		s.Logger.Errorf("An error occurred: %v", err)
 		errorhandler.BadRequestErrorHandler(w, errorhandler.ErrUserNotFound, r.URL.Path)
@@ -255,7 +255,7 @@ func (s *userService) UpdateUserDetails(w http.ResponseWriter, r *http.Request) 
 
 	user.Age = &newUserDetails.Age
 
-	err = (*s.repo).UpdateUserDetails(user)
+	err = s.repo.UpdateUserDetails(user)
 	if err != nil {
 		s.Logger.Errorf("An error occurred: %v", err)
 		errorhandler.InternalErrorHandler(w)
@@ -274,7 +274,7 @@ func (s *userService) DeleteAccount(w http.ResponseWriter, r *http.Request) {
 	username := r.PathValue("username")
 	s.Logger.Infof("Deleting an account by his username: %v\n", username)
 
-	err := (*s.repo).DeleteAccount(username)
+	err := s.repo.DeleteAccount(username)
 	if err != nil {
 		s.Logger.Errorf("An error occurred: %v", err)
 		errorhandler.InternalErrorHandler(w)

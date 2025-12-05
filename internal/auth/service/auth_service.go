@@ -29,15 +29,15 @@ const (
 
 type authService struct {
 	jwtMaker          *token.JwtBuilder
-	userRepository    *user.Repository
-	sessionRepository *auth.Repository
+	userRepository    user.Repository
+	sessionRepository auth.Repository
 	Logger            *log.Logger
 	Cache             *cache.Caches
 }
 
 // NewAuthService initialize a new AuthService containing a UserRepository for
 // login and register operations ONLY.
-func NewAuthService(userRepo *user.Repository, sessionRepo *auth.Repository, logg *log.Logger, secretKey string, cache *cache.Caches) auth.Service {
+func NewAuthService(userRepo user.Repository, sessionRepo auth.Repository, logg *log.Logger, secretKey string, cache *cache.Caches) auth.Service {
 	return &authService{
 		userRepository:    userRepo,
 		sessionRepository: sessionRepo,
@@ -85,7 +85,7 @@ func (s *authService) Register(w http.ResponseWriter, r *http.Request) {
 
 	*password = string(hashedPassword)
 
-	err = (*s.userRepository).RegisterUser(&user)
+	err = s.userRepository.RegisterUser(&user)
 	if err != nil {
 		s.Logger.Errorf("An error occurred: %v", err)
 		errorhandler.InternalErrorHandler(w)
@@ -111,7 +111,7 @@ func (s *authService) LoginCookieBased(w http.ResponseWriter, r *http.Request) {
 	sessionToken := token.GenerateToken(Token_Length)
 	csrfToken := token.GenerateToken(Token_Length)
 
-	err := (*s.userRepository).SetUserToken(sessionToken, csrfToken, *user.Id)
+	err := s.userRepository.SetUserToken(sessionToken, csrfToken, *user.Id)
 	if err != nil {
 		s.Logger.Errorf("An error occurred: %v", err)
 		errorhandler.InternalErrorHandler(w)
@@ -200,7 +200,7 @@ func (s *authService) LoginJwtRefreshBased(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	sessionId, err := (*s.sessionRepository).CreateSession(&domain.Session{
+	sessionId, err := s.sessionRepository.CreateSession(&domain.Session{
 		Id:           refreshClaims.RegisteredClaims.ID,
 		Username:     *user.Username,
 		RefreshToken: refreshToken,
@@ -247,7 +247,7 @@ func (s *authService) RenewAccessToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var session *domain.Session
-	session, err = (*s.sessionRepository).FindSessionById(refreshClaims.ID)
+	session, err = s.sessionRepository.FindSessionById(refreshClaims.ID)
 	if err != nil {
 		s.Logger.Errorf("An error occurred: %v", err)
 		errorhandler.BadRequestErrorHandler(w, errorhandler.ErrInvalidToken, r.URL.Path)
@@ -292,10 +292,10 @@ func (s *authService) RevokeSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := (*s.sessionRepository).RevokeSession(id)
+	err := s.sessionRepository.RevokeSession(id)
 	if err != nil {
 		s.Logger.Errorf("An error occurred: %v", err)
-		errorhandler.BadRequestErrorHandler(w, errorhandler.ErrInvalidSession, r.URL.Path)
+		errorhandler.BadRequestErrorHandler(w, errorhandler.ErrSessionNotFound, r.URL.Path)
 		return
 	}
 
@@ -348,7 +348,7 @@ func isValidUser(newUser *domain.User, s *authService) (bool, error) {
 		return false, errorhandler.ErrAgeIsRequired
 	}
 
-	user, err := (*s.userRepository).FindUserByUsername(*newUser.Username)
+	user, err := s.userRepository.FindUserByUsername(*newUser.Username)
 	if user != nil {
 		s.Logger.Errorf("An error occurred: %v\n", err)
 		return false, errorhandler.ErrUserAlreadyExists
@@ -375,7 +375,7 @@ func loginFlow(s *authService, w http.ResponseWriter, r *http.Request) *domain.U
 	}
 
 	var userInTheDatabase *domain.User
-	userInTheDatabase, err = (*s.userRepository).FindUserByUsername(user.Username)
+	userInTheDatabase, err = s.userRepository.FindUserByUsername(user.Username)
 	if err != nil {
 		s.Logger.Errorf("An error occurred: %v", errorhandler.ErrUserNotFound)
 		errorhandler.BadRequestErrorHandler(w, errorhandler.ErrUserNotFound, r.URL.Path)
