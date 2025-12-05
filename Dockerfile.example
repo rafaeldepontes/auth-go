@@ -1,0 +1,22 @@
+FROM golang:1.25-alpine AS build
+
+WORKDIR /app
+
+COPY go.mod go.sum ./
+
+RUN go mod download
+
+COPY . .
+
+RUN CGO_ENABLED=0 GOOS=linux go build -o "fauthless-go" ./cmd/cookie-based/main.go
+
+
+FROM scratch
+
+WORKDIR /app
+
+COPY --from=build /app/fauthless-go .
+
+EXPOSE 8000
+
+CMD ["./fauthless-go"]
