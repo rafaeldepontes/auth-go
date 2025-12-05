@@ -25,5 +25,5 @@ func main() {
 
 	app.Logger.Infof("API running at %v\n", config.OAuth2Port)
 
-	http.ListenAndServe(config.OAuth2Port, r)
+	http.ListenAndServe(":"+config.OAuth2Port, r)
 }

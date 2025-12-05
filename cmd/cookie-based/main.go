@@ -24,5 +24,5 @@ func main() {
 
 	app.Logger.Infof("API running at %v", config.CookieBasedPort)
 
-	http.ListenAndServe(config.CookieBasedPort, r)
+	http.ListenAndServe(":"+config.CookieBasedPort, r)
 }
